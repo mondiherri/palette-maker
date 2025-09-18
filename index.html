@@ -10,28 +10,38 @@
     body {
       margin: 0; padding: 24px; background: var(--bg); color: #111;
       font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      min-height: 100vh; display: flex; flex-direction: column;
     }
     h1 { font-size: 18px; margin: 0 0 12px; }
-    .app { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 20px; align-items: start; }
+    .app {
+      display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 20px;
+      align-items: stretch; flex: 1 1 auto; min-height: 0;
+    }
     .card {
       background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 1px 0 rgba(0,0,0,.04);
     }
     .right-panels {
       display: flex;
       gap: 20px;
-      align-items: flex-start;
+      align-items: stretch;
       min-width: 0;
+      height: 100%;
+      min-height: 0;
     }
     .palette-card {
       flex: 0 1 360px;
       min-width: 260px;
       display: flex;
       flex-direction: column;
+      height: 100%;
+      min-height: 0;
     }
     .highlight-card { display: flex; flex-direction: column; gap: 12px; }
     .right-panels .highlight-card {
       flex: 1 1 auto;
       min-width: 280px;
+      height: 100%;
+      min-height: 0;
     }
     .panel-resizer {
       flex: 0 0 10px;
@@ -79,10 +89,13 @@
     }
     .legend-item:hover { transform: translateY(-1px); }
     .legend-more { font-size: 12px; font-weight: 600; color: var(--muted); align-self: center; }
-    .highlight-body { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 12px; align-items: stretch; }
+    .highlight-body {
+      display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 12px; align-items: stretch;
+      flex: 1 1 auto; height: 100%; min-height: 0;
+    }
     .sample-text {
       background: #fdfdf9; border: 1px solid var(--border); border-radius: 12px; padding: 12px; line-height: 1.55;
-      color: #2a2a2a; box-shadow: inset 0 1px 0 rgba(255,255,255,.6); height: 360px; overflow-y: auto; position: relative;
+      color: #2a2a2a; box-shadow: inset 0 1px 0 rgba(255,255,255,.6); height: 100%; overflow-y: auto; position: relative;
       font-size: 13px;
     }
     .sample-text p { margin: 0 0 10px; }
@@ -96,7 +109,7 @@
     }
     .overview-wrap {
       border: 1px solid var(--border); border-radius: 12px; background: #1f1f1f; padding: 10px; display: flex;
-      align-items: stretch; justify-content: center; height: 360px;
+      align-items: stretch; justify-content: center; height: 100%; min-height: 0;
     }
     .overview-wrap canvas { width: 100%; height: 100%; display: block; border-radius: 8px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -114,6 +127,7 @@
     button:disabled { opacity: .5; cursor: not-allowed; }
 
     .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    #grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
     .grid.single-column { grid-template-columns: 1fr; }
     .swatch {
       height: 76px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between;
@@ -193,13 +207,19 @@
     @media (max-width: 1200px) {
       .right-panels {
         flex-direction: column;
+        height: auto;
       }
       .palette-card {
         flex: 1 1 auto;
         min-width: 0;
+        height: auto;
       }
       .right-panels .highlight-card {
         min-width: 0;
+        height: auto;
+      }
+      .highlight-body {
+        height: auto;
       }
       .panel-resizer {
         display: none;
@@ -698,6 +718,13 @@ oklch(72% 0.12 340)
 	}
     const randomIn = (min,max)=>min+Math.random()*(max-min);
     const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    function shuffleInPlace(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = randomInt(0, i);
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
     const buildOKLCH = (l,c,h)=> new Color("oklch",[clamp(l,0,1),clamp(c,0,0.4),normHue(h)]);
     const textColorFor = (bg) => (bg.oklch.l > 0.65 ? "#000" : "#fff");
     const fmtOKLCH = (c)=>`oklch(${(c.oklch.l*100).toFixed(1)}% ${c.oklch.c.toFixed(4)} ${isFinite(c.oklch.h)?c.oklch.h.toFixed(1):0})`;
@@ -719,72 +746,38 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
     }
 
     function createRandomParagraph(colorIndices) {
+      const paletteChoices = colorIndices.length ? colorIndices : [0];
       const words = [];
-      const wordCount = randomInt(18, 28);
+      const wordCount = randomInt(9, 12);
       for (let i = 0; i < wordCount; i++) {
         words.push(fillerWords[randomInt(0, fillerWords.length - 1)]);
       }
       words[0] = capitalizeWord(words[0]);
-      const highlightCount = randomInt(2, 4);
-      const indices = Array.from({ length: wordCount }, (_, i) => i);
-      for (let i = indices.length - 1; i > 0; i--) {
-        const j = randomInt(0, i);
-        [indices[i], indices[j]] = [indices[j], indices[i]];
-      }
-      const segments = [];
-      const used = new Set();
-      let cursor = 0;
-      while (segments.length < highlightCount && cursor < indices.length) {
-        const start = indices[cursor++];
-        if (used.has(start)) continue;
-        const maxLen = Math.min(3, wordCount - start);
-        if (maxLen <= 0) continue;
-        let len = randomInt(1, maxLen);
-        let overlaps = false;
-        for (let offset = 0; offset < len; offset++) {
-          if (used.has(start + offset)) {
-            overlaps = true;
-            break;
-          }
-        }
-        if (overlaps) continue;
-        const colorIndex = colorIndices[randomInt(0, colorIndices.length - 1)];
-        segments.push({ start, len, colorIndex });
-        for (let offset = 0; offset < len; offset++) {
-          used.add(start + offset);
-        }
-      }
-      if (segments.length < highlightCount) {
-        for (let i = 0; i < wordCount && segments.length < highlightCount; i++) {
-          if (used.has(i)) continue;
-          const colorIndex = colorIndices[randomInt(0, colorIndices.length - 1)];
-          segments.push({ start: i, len: 1, colorIndex });
-          used.add(i);
-        }
-      }
-      segments.sort((a, b) => a.start - b.start);
-      const segmentMap = new Map(segments.map(seg => [seg.start, seg]));
+      const highlightCount = Math.min(randomInt(3, 4), wordCount);
+      const positions = shuffleInPlace(Array.from({ length: wordCount }, (_, i) => i))
+        .slice(0, highlightCount)
+        .sort((a, b) => a - b);
+      const highlighted = new Set(positions);
       const p = document.createElement("p");
-      let index = 0;
-      while (index < wordCount) {
-        const seg = segmentMap.get(index);
-        if (seg) {
+      let createdHighlights = 0;
+      for (let i = 0; i < wordCount; i++) {
+        if (highlighted.has(i)) {
           const span = document.createElement("span");
-          span.dataset.colorIndex = String(seg.colorIndex);
-          span.textContent = words.slice(index, index + seg.len).join(" ");
+          const colorIndex = paletteChoices[randomInt(0, paletteChoices.length - 1)];
+          span.dataset.colorIndex = String(colorIndex);
+          span.textContent = words[i];
           p.appendChild(span);
-          index += seg.len;
+          createdHighlights += 1;
         } else {
-          p.appendChild(document.createTextNode(words[index]));
-          index += 1;
+          p.appendChild(document.createTextNode(words[i]));
         }
-        if (index < wordCount) {
+        if (i < wordCount - 1) {
           p.appendChild(document.createTextNode(" "));
         }
       }
       const punctuation = punctuationMarks[randomInt(0, punctuationMarks.length - 1)];
       p.appendChild(document.createTextNode(punctuation));
-      return p;
+      return { element: p, highlightCount: createdHighlights };
     }
 
     function randomizePreviewText() {
@@ -801,10 +794,20 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         lineHeight = fontSize * 1.55;
       }
       const containerHeight = container.clientHeight || 360;
-      const paragraphCount = Math.max(12, Math.ceil(containerHeight / lineHeight) + 6);
+      const baseParagraphCount = Math.max(12, Math.ceil(containerHeight / lineHeight) + 6);
+      const minParagraphsForColors = availableColors > 0 ? Math.ceil(availableColors / 3) : 0;
+      const paragraphCount = Math.max(baseParagraphCount, minParagraphsForColors);
       const fragment = document.createDocumentFragment();
+      let highlightTotal = 0;
       for (let i = 0; i < paragraphCount; i++) {
-        fragment.appendChild(createRandomParagraph(colorIndices));
+        const { element, highlightCount } = createRandomParagraph(colorIndices);
+        fragment.appendChild(element);
+        highlightTotal += highlightCount;
+      }
+      while (highlightTotal < availableColors) {
+        const { element, highlightCount } = createRandomParagraph(colorIndices);
+        fragment.appendChild(element);
+        highlightTotal += highlightCount;
       }
       container.innerHTML = "";
       container.appendChild(fragment);
@@ -812,10 +815,34 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       updateTextPreview();
     }
 
+    function redistributeHighlightAssignments(spans, colorCount) {
+      if (!colorCount || !spans.length) return;
+      const assignments = [];
+      for (let i = 0; i < colorCount && assignments.length < spans.length; i++) {
+        assignments.push(i);
+      }
+      while (assignments.length < spans.length) {
+        assignments.push(randomInt(0, colorCount - 1));
+      }
+      shuffleInPlace(assignments);
+      spans.forEach((span, index) => {
+        span.dataset.colorIndex = String(assignments[index]);
+      });
+    }
+
     function toDisplayColor(color) {
       const clone = color.clone();
-      clone.toGamut({ space: "srgb" });
+      if (els.sRGBGamut?.checked) {
+        clone.toGamut({ space: "srgb" });
+      }
       return clone;
+    }
+
+    function colorToCss(color) {
+      if (els.sRGBGamut?.checked) {
+        return color.toString({ format: "hex" });
+      }
+      return fmtOKLCH(color);
     }
 
     function updateLegend(colors) {
@@ -836,10 +863,12 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         const display = toDisplayColor(color);
         const chip = document.createElement("span");
         chip.className = "legend-item";
-        chip.style.backgroundColor = display.toString({ format: "hex" });
+        chip.style.backgroundColor = colorToCss(display);
         chip.style.color = textColorFor(display.to("oklch"));
         chip.textContent = i < 26 ? String.fromCharCode(65 + i) : String(i + 1);
-        chip.title = `${fmtOKLCH(color)} | ${display.toString({ format: "hex" })}`;
+        const srgbClone = color.clone();
+        srgbClone.toGamut({ space: "srgb" });
+        chip.title = `${fmtOKLCH(color)} | ${srgbClone.toString({ format: "hex" })}`;
         legend.appendChild(chip);
       }
       if (colors.length > maxLegend) {
@@ -880,7 +909,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         const color = colors[raw];
         if (!color) return;
         const display = toDisplayColor(color);
-        const fill = display.toString({ format: "hex" });
+        const fill = colorToCss(display);
         const start = span.offsetTop;
         const end = start + span.offsetHeight;
         const y = (start / contentHeight) * height;
@@ -905,17 +934,26 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       if (!els.highlightText) return;
       const colors = palette.slice(0, getTargetSize());
       const spans = Array.from(els.highlightText.querySelectorAll("[data-color-index]"));
+      if (colors.length > spans.length) {
+        randomizePreviewText();
+        return;
+      }
+      if (colors.length) {
+        redistributeHighlightAssignments(spans, colors.length);
+      }
       spans.forEach(span => {
         const raw = Number(span.dataset.colorIndex);
         const color = Number.isFinite(raw) ? colors[raw] : null;
         if (color) {
           const display = toDisplayColor(color);
           const ok = display.to("oklch");
-          span.style.backgroundColor = display.toString({ format: "hex" });
+          span.style.backgroundColor = colorToCss(display);
           span.style.color = textColorFor(ok);
           span.style.boxShadow = "0 0 0 1px rgba(0,0,0,0.12)";
           span.classList.remove("inactive");
-          span.title = `${fmtOKLCH(color)} | ${display.toString({ format: "hex" })}`;
+          const srgbClone = color.clone();
+          srgbClone.toGamut({ space: "srgb" });
+          span.title = `${fmtOKLCH(color)} | ${srgbClone.toString({ format: "hex" })}`;
         } else {
           span.style.backgroundColor = "";
           span.style.color = "";
