@@ -12,11 +12,59 @@
       font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
     }
     h1 { font-size: 18px; margin: 0 0 12px; }
-    .app { display: grid; grid-template-columns: 420px minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+    .app { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 20px; align-items: start; }
     .card {
       background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 1px 0 rgba(0,0,0,.04);
     }
+    .right-panels {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      min-width: 0;
+    }
+    .palette-card {
+      flex: 0 1 360px;
+      min-width: 260px;
+      display: flex;
+      flex-direction: column;
+    }
     .highlight-card { display: flex; flex-direction: column; gap: 12px; }
+    .right-panels .highlight-card {
+      flex: 1 1 auto;
+      min-width: 280px;
+    }
+    .panel-resizer {
+      flex: 0 0 10px;
+      align-self: stretch;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.08));
+      cursor: col-resize;
+      position: relative;
+      touch-action: none;
+    }
+    .panel-resizer::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 26px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.25);
+      box-shadow: 0 -8px 0 0 rgba(0,0,0,0.18), 0 8px 0 0 rgba(0,0,0,0.18);
+    }
+    .panel-resizer:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .right-panels.is-resizing {
+      cursor: col-resize;
+    }
+    .right-panels.is-resizing .card {
+      user-select: none;
+    }
     .highlight-header { display: flex; justify-content: space-between; align-items: center; }
     .highlight-legend { display: flex; flex-wrap: wrap; gap: 6px; }
     .legend-item {
@@ -137,8 +185,19 @@
     .export { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
 
     @media (max-width: 1200px) {
-      .app { grid-template-columns: 420px minmax(0, 1fr); }
-      .highlight-card { grid-column: 1 / -1; }
+      .right-panels {
+        flex-direction: column;
+      }
+      .palette-card {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .right-panels .highlight-card {
+        min-width: 0;
+      }
+      .panel-resizer {
+        display: none;
+      }
     }
     @media (max-width: 1000px) { .app { grid-template-columns: 1fr; } .grid { grid-template-columns: repeat(4, 1fr); } }
     @media (max-width: 900px) {
@@ -306,35 +365,35 @@ oklch(72% 0.12 340)
       </div>
     </div>
 
-    <!-- RIGHT: Palette -->
-    <div class="card">
-      <div class="footer">
-        <div class="small">Palette (<span id="count">0</span>/<span id="targetSpan">25</span>)</div>
-        <div class="stats">
-          L<span class="pill"><span id="statL">–</span></span>
-          C<span class="pill"><span id="statC">–</span></span>
-          Δ<sub>avg</sub><span class="pill"><span id="statD">–</span></span>
+    <!-- RIGHT: Palette + Preview -->
+    <div class="right-panels">
+      <div class="card palette-card" id="palettePanel">
+        <div class="footer">
+          <div class="small">Palette (<span id="count">0</span>/<span id="targetSpan">25</span>)</div>
+          <div class="stats">
+            L<span class="pill"><span id="statL">–</span></span>
+            C<span class="pill"><span id="statC">–</span></span>
+            Δ<sub>avg</sub><span class="pill"><span id="statD">–</span></span>
+          </div>
         </div>
+        <div class="layout-controls">
+          <label for="layoutMode">Layout</label>
+          <select id="layoutMode">
+            <option value="grid">Grid</option>
+            <option value="column">Single column</option>
+          </select>
+        </div>
+        <div id="grid" class="grid" style="margin-top:10px;"></div>
       </div>
-      <div class="layout-controls">
-        <label for="layoutMode">Layout</label>
-        <select id="layoutMode">
-          <option value="grid">Grid</option>
-          <option value="column">Single column</option>
-        </select>
-      </div>
-      <div id="grid" class="grid" style="margin-top:10px;"></div>
-    </div>
-
-    <!-- RIGHTMOST: Highlight preview -->
-    <div class="card highlight-card">
-      <div class="highlight-header">
-        <div class="small">Document highlight preview</div>
-        <div class="small muted">Mapped to palette</div>
-      </div>
-      <div id="highlightLegend" class="highlight-legend" aria-live="polite" aria-label="Palette legend"></div>
-      <div class="highlight-body">
-        <div id="highlightText" class="sample-text" aria-label="Example document with highlights">
+      <div id="panelResizer" class="panel-resizer" role="separator" aria-orientation="vertical" aria-label="Resize palette and preview panels" aria-controls="palettePanel highlightPanel" tabindex="0"></div>
+      <div class="card highlight-card" id="highlightPanel">
+        <div class="highlight-header">
+          <div class="small">Document highlight preview</div>
+          <div class="small muted">Mapped to palette</div>
+        </div>
+        <div id="highlightLegend" class="highlight-legend" aria-live="polite" aria-label="Palette legend"></div>
+        <div class="highlight-body">
+          <div id="highlightText" class="sample-text" aria-label="Example document with highlights">
           <p>
             obtain the <span data-color-index="0">codebook</span> corresponding to the first <span data-color-index="1">data set</span>.
             The <span data-color-index="2">first preset number</span> and the <span data-color-index="3">second preset number</span>
@@ -416,6 +475,10 @@ oklch(72% 0.12 340)
       highlightText: document.getElementById("highlightText"),
       overviewCanvas: document.getElementById("overviewCanvas"),
       highlightLegend: document.getElementById("highlightLegend"),
+      palettePanel: document.getElementById("palettePanel"),
+      highlightPanel: document.getElementById("highlightPanel"),
+      panelResizer: document.getElementById("panelResizer"),
+      rightPanels: document.querySelector(".right-panels"),
     };
 
     function activateTab(which) {
@@ -430,6 +493,169 @@ oklch(72% 0.12 340)
 
     let palette = [];
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    setupPanelResizer();
+    function setupPanelResizer() {
+      const resizer = els.panelResizer;
+      const palettePanel = els.palettePanel;
+      const highlightPanel = els.highlightPanel;
+      const container = els.rightPanels;
+      if (!resizer || !palettePanel || !highlightPanel || !container) return;
+
+      const STORAGE_KEY = "palette-maker:palette-width";
+      const MIN_PALETTE = 260;
+      const MIN_PREVIEW = 260;
+      let savedWidth = null;
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        const parsed = stored == null ? null : parseFloat(stored);
+        if (Number.isFinite(parsed)) savedWidth = parsed;
+      } catch {
+        savedWidth = null;
+      }
+      let lastWidth = savedWidth;
+      let activePointer = null;
+      let startX = 0;
+      let startWidth = 0;
+
+      const getMetrics = () => {
+        const styles = getComputedStyle(container);
+        const isRow = styles.flexDirection.startsWith("row");
+        const gap = parseFloat(styles.columnGap || styles.gap || "0") || 0;
+        const containerWidth = container.getBoundingClientRect().width;
+        const resizerWidth = resizer.offsetWidth || parseFloat(getComputedStyle(resizer).width) || 0;
+        const maxPalette = containerWidth - (MIN_PREVIEW + resizerWidth + gap * 2);
+        return { isRow, gap, containerWidth, resizerWidth, maxPalette };
+      };
+
+      const updateAria = (width, metrics) => {
+        if (!metrics || !metrics.isRow) {
+          resizer.setAttribute("aria-disabled", "true");
+          resizer.removeAttribute("aria-valuemin");
+          resizer.removeAttribute("aria-valuemax");
+          resizer.removeAttribute("aria-valuenow");
+          return;
+        }
+        resizer.removeAttribute("aria-disabled");
+        const maxPalette = Math.max(MIN_PALETTE, metrics.maxPalette);
+        resizer.setAttribute("aria-valuemin", String(MIN_PALETTE));
+        resizer.setAttribute("aria-valuemax", String(Math.round(maxPalette)));
+        if (Number.isFinite(width)) {
+          resizer.setAttribute("aria-valuenow", String(Math.round(width)));
+        } else {
+          resizer.removeAttribute("aria-valuenow");
+        }
+      };
+
+      const applyWidth = (value, { persist = false } = {}) => {
+        const metrics = getMetrics();
+        if (!metrics) return null;
+        if (!metrics.isRow) {
+          palettePanel.style.flexBasis = "";
+          highlightPanel.style.flexBasis = "";
+          updateAria(null, metrics);
+          return null;
+        }
+        const maxPalette = Math.max(MIN_PALETTE, metrics.maxPalette);
+        const basis = Number.isFinite(value)
+          ? value
+          : (Number.isFinite(lastWidth) ? lastWidth : palettePanel.getBoundingClientRect().width);
+        const width = clamp(basis, MIN_PALETTE, maxPalette);
+        palettePanel.style.flexBasis = `${width}px`;
+        highlightPanel.style.flexBasis = "";
+        lastWidth = width;
+        updateAria(width, metrics);
+        if (persist) {
+          savedWidth = width;
+          try {
+            localStorage.setItem(STORAGE_KEY, String(Math.round(width)));
+          } catch {
+            /* ignore storage errors */
+          }
+        }
+        return width;
+      };
+
+      const handleResize = () => {
+        const metrics = getMetrics();
+        if (!metrics) return;
+        if (!metrics.isRow) {
+          palettePanel.style.flexBasis = "";
+          highlightPanel.style.flexBasis = "";
+          updateAria(null, metrics);
+          container.classList.remove("is-resizing");
+          return;
+        }
+        const width = Number.isFinite(lastWidth) ? lastWidth : savedWidth;
+        applyWidth(width, { persist: false });
+      };
+
+      if (Number.isFinite(savedWidth)) {
+        lastWidth = savedWidth;
+      }
+      handleResize();
+      window.addEventListener("resize", handleResize);
+
+      resizer.addEventListener("pointerdown", (event) => {
+        const metrics = getMetrics();
+        if (!metrics || !metrics.isRow) return;
+        activePointer = event.pointerId;
+        startX = event.clientX;
+        startWidth = palettePanel.getBoundingClientRect().width;
+        resizer.setPointerCapture(activePointer);
+        container.classList.add("is-resizing");
+        event.preventDefault();
+      });
+
+      resizer.addEventListener("pointermove", (event) => {
+        if (activePointer === null) return;
+        const metrics = getMetrics();
+        if (!metrics || !metrics.isRow) return;
+        const delta = event.clientX - startX;
+        applyWidth(startWidth + delta, { persist: false });
+        event.preventDefault();
+      });
+
+      const finishPointer = () => {
+        if (activePointer === null) return;
+        resizer.releasePointerCapture(activePointer);
+        activePointer = null;
+        container.classList.remove("is-resizing");
+        applyWidth(lastWidth, { persist: true });
+      };
+
+      resizer.addEventListener("pointerup", finishPointer);
+      resizer.addEventListener("pointercancel", finishPointer);
+
+      resizer.addEventListener("keydown", (event) => {
+        const metrics = getMetrics();
+        if (!metrics || !metrics.isRow) return;
+        const step = event.shiftKey ? 40 : 16;
+        const currentWidth = Number.isFinite(lastWidth) ? lastWidth : palettePanel.getBoundingClientRect().width;
+        let handled = false;
+        if (event.key === "ArrowLeft") {
+          applyWidth(currentWidth - step, { persist: true });
+          handled = true;
+        } else if (event.key === "ArrowRight") {
+          applyWidth(currentWidth + step, { persist: true });
+          handled = true;
+        } else if (event.key === "Home") {
+          applyWidth(MIN_PALETTE, { persist: true });
+          handled = true;
+        } else if (event.key === "End") {
+          const metricsNow = getMetrics();
+          if (metricsNow && metricsNow.isRow) {
+            const maxPalette = Math.max(MIN_PALETTE, metricsNow.maxPalette);
+            applyWidth(maxPalette, { persist: true });
+            handled = true;
+          }
+        }
+        if (handled) {
+          event.preventDefault();
+        }
+      });
+    }
+
     const pctToUnit = (val) => Number.isNaN(val) ? 0 : (val > 1.5 ? clamp(val / 100, 0, 1) : clamp(val, 0, 1));
     const normHue = (h) => (h % 360);
     const circularDist = (a, b) => { const d = Math.abs(normHue(a) - normHue(b)); return Math.min(d, 360 - d); };
