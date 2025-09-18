@@ -479,6 +479,42 @@ oklch(72% 0.12 340)
                   <option value="humanist">Humanist Sans</option>
                   <option value="serif">Serif</option>
                   <option value="mono">Monospace</option>
+			<!-- Font options that should be added:
+"Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif
+Arial
+Arial Black
+Calibri
+Cambria
+Candara
+Comic Sans MS
+Consolas
+Constantia
+Corbel
+Courier New
+Dotum
+Ebrima
+Franklin Gothic Medium
+Gabriola
+Georgia
+Leelawadee
+Lucida Sans Unicode
+Malgun Gothic
+Microsoft Himalaya
+Microsoft JhengHei
+Microsoft New Tai Lue
+Microsoft PhagsPa
+Microsoft Sans Serif
+Microsoft Tai Le
+Microsoft YaHei
+Palatino Linotype
+Segoe Print
+Segoe UI
+Tahoma
+Times New Roman
+Trebuchet MS
+Verdana
+-->
+					
                 </select>
               </div>
               <div>
@@ -506,6 +542,7 @@ oklch(72% 0.12 340)
         </div>
       </div>
     </div>
+
 
     <!-- RIGHT: Palette + Preview -->
     <div class="right-panels">
@@ -579,6 +616,7 @@ oklch(72% 0.12 340)
   </div>
 
   <script type="module">
+
     import Color from "https://colorjs.io/dist/color.js";
 
     let paletteLab = null;
@@ -621,6 +659,7 @@ oklch(72% 0.12 340)
       statL: document.getElementById("statL"),
       statC: document.getElementById("statC"),
       statD: document.getElementById("statD"),
+
       btnCopyOKLCH: document.getElementById("btnCopyOKLCH"),
       btnCopyHex: document.getElementById("btnCopyHex"),
       btnCopyJSON: document.getElementById("btnCopyJSON"),
@@ -955,6 +994,7 @@ oklch(72% 0.12 340)
 
     // Parse user input into Color objects, supporting plain numbers and CSS strings.
     function parseColor(str) {
+
       const s = String(str || "").trim(); if (!s) return null;
       try { return new Color(s); }
       catch {
@@ -981,6 +1021,7 @@ oklch(72% 0.12 340)
 	const tol= parseFloat(els.minDistance.value)||0.08;
 	return (color, list, tol) => list.some(o => oklchDistance(color,o) < tol);
 	}
+
     const randomIn = (min,max)=>min+Math.random()*(max-min);
     const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
     // Fisher–Yates shuffle for randomized ordering.
@@ -1784,6 +1825,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
 	  render();
     }
 
+
     // Replace the palette with the user-provided list of colors.
     function applyInputToPalette(){ const N=getTargetSize(); const cols=parseColorsMultiLine(els.inputColors.value||""); palette=cols.slice(0,N); render(); }
     // Clear out the current palette.
@@ -1807,6 +1849,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       const isSingleColumn = els.layoutMode.value === "column";
       els.grid.classList.toggle("single-column", isSingleColumn);
     }
+
 
     els.btnApplyInput.addEventListener("click", applyInputToPalette);
     els.btnClear.addEventListener("click", clearPalette);
@@ -1874,6 +1917,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         updateDirectionalPreview();
       });
     });
+
     ["lMin","lMax","cMin","cMax"].forEach(id=>{
       document.getElementById(id).addEventListener("input", ()=>{
         updateHueSliderGradient();
@@ -1917,10 +1961,12 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       });
       updatePaletteOutputs();
     }
+
     // Init
     els.dirLReadout.textContent = `${els.dirL.value}%`;
     els.dirCReadout.textContent = `${parseFloat(els.dirC.value).toFixed(3)}`;
     updateHueSliderGradient();
+
     updateDirectionalPreview();
     activateTab("basic");
     render();
