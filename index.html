@@ -163,6 +163,15 @@
     input[type="text"], input[type="number"], textarea, select {
       width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; background: #fff; font: inherit;
     }
+    input[type="color"] {
+      width: 100%; height: 36px; padding: 0; border-radius: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer;
+    }
+    input[type="color"]::-webkit-color-swatch {
+      border: none; border-radius: 8px;
+    }
+    input[type="color"]::-moz-color-swatch {
+      border: none; border-radius: 8px;
+    }
     textarea { resize: vertical; min-height: 84px; }
     .controls { display: grid; gap: 12px; }
     .btnbar { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -378,6 +387,7 @@
           <div class="tablist" role="tablist" aria-label="Palette generators">
             <button id="tabBasic" class="tab" role="tab" aria-selected="true" aria-controls="panelBasic">Generate all / Random / Step</button>
             <button id="tabDirectional" class="tab" role="tab" aria-selected="false" aria-controls="panelDirectional">Directional</button>
+            <button id="tabSettings" class="tab" role="tab" aria-selected="false" aria-controls="panelSettings">Settings</button>
           </div>
 
           <!-- Generate / Step -->
@@ -433,7 +443,30 @@ oklch(72% 0.12 340)
 
             <div class="btnbar" style="margin-top:8px">
               <button id="btnAddNextDirectional">Add next like Hue</button>
-			  <div class="note">Respects Min Δ in OkLAB color space</div>
+                          <div class="note">Respects Min Δ in OkLAB color space</div>
+            </div>
+          </section>
+          <!-- Settings -->
+          <section id="panelSettings" class="tabpanel" role="tabpanel" aria-labelledby="tabSettings">
+            <div class="row">
+              <div>
+                <label for="previewFont">Sample font</label>
+                <select id="previewFont">
+                  <option value="system">System UI</option>
+                  <option value="humanist">Humanist Sans</option>
+                  <option value="serif">Serif</option>
+                  <option value="mono">Monospace</option>
+                </select>
+              </div>
+              <div>
+                <label for="previewFontSize">Font size (px)</label>
+                <input id="previewFontSize" type="number" min="10" max="24" step="1" value="13" />
+              </div>
+            </div>
+            <div>
+              <label for="previewBackground">Preview background</label>
+              <input id="previewBackground" type="color" value="#fdfdf9" />
+              <div class="note">Adjusts the document highlight preview backdrop.</div>
             </div>
           </section>
         </div>
@@ -552,8 +585,10 @@ oklch(72% 0.12 340)
       btnAddNextDirectional: document.getElementById("btnAddNextDirectional"),
       tabBasic: document.getElementById("tabBasic"),
       tabDirectional: document.getElementById("tabDirectional"),
+      tabSettings: document.getElementById("tabSettings"),
       panelBasic: document.getElementById("panelBasic"),
       panelDirectional: document.getElementById("panelDirectional"),
+      panelSettings: document.getElementById("panelSettings"),
       grid: document.getElementById("grid"),
       layoutMode: document.getElementById("layoutMode"),
       count: document.getElementById("count"),
@@ -565,6 +600,9 @@ oklch(72% 0.12 340)
       btnCopyJSON: document.getElementById("btnCopyJSON"),
       btnRandomizeText: document.getElementById("btnRandomizeText"),
       highlightText: document.getElementById("highlightText"),
+      previewFont: document.getElementById("previewFont"),
+      previewFontSize: document.getElementById("previewFontSize"),
+      previewBackground: document.getElementById("previewBackground"),
       overviewCanvas: document.getElementById("overviewCanvas"),
       overviewHeader: document.getElementById("overviewHeader"),
       palettePanel: document.getElementById("palettePanel"),
@@ -573,15 +611,33 @@ oklch(72% 0.12 340)
       rightPanels: document.querySelector(".right-panels"),
     };
 
+    const tabConfig = [
+      { key: "basic", button: els.tabBasic, panel: els.panelBasic },
+      { key: "dir", button: els.tabDirectional, panel: els.panelDirectional },
+      { key: "settings", button: els.tabSettings, panel: els.panelSettings },
+    ];
+
     function activateTab(which) {
-      const isBasic = which === "basic";
-      els.tabBasic.setAttribute("aria-selected", isBasic ? "true" : "false");
-      els.tabDirectional.setAttribute("aria-selected", !isBasic ? "true" : "false");
-      els.panelBasic.classList.toggle("active", isBasic);
-      els.panelDirectional.classList.toggle("active", !isBasic);
+      tabConfig.forEach(({ key, button, panel }) => {
+        const active = key === which;
+        if (button) {
+          button.setAttribute("aria-selected", active ? "true" : "false");
+          button.setAttribute("tabindex", active ? "0" : "-1");
+        }
+        if (panel) {
+          panel.classList.toggle("active", active);
+        }
+      });
     }
-    els.tabBasic.addEventListener("click", ()=>activateTab("basic"));
-    els.tabDirectional.addEventListener("click", ()=>activateTab("dir"));
+    if (els.tabBasic) {
+      els.tabBasic.addEventListener("click", () => activateTab("basic"));
+    }
+    if (els.tabDirectional) {
+      els.tabDirectional.addEventListener("click", () => activateTab("dir"));
+    }
+    if (els.tabSettings) {
+      els.tabSettings.addEventListener("click", () => activateTab("settings"));
+    }
 
     let palette = [];
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -591,6 +647,106 @@ oklch(72% 0.12 340)
     const getOverviewTotalWidth = (count) => count > 0
       ? (count * OVERVIEW_RECT_WIDTH) + ((count - 1) * OVERVIEW_LANE_GAP)
       : 0;
+
+    const PREVIEW_SETTINGS_KEY = "palette-maker:preview-settings";
+    const PREVIEW_FONT_SIZE_RANGE = { min: 10, max: 24 };
+    const PREVIEW_FONTS = {
+      system: "system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", \"Liberation Sans\", sans-serif",
+      humanist: "\"Gill Sans\", \"Trebuchet MS\", \"Segoe UI\", sans-serif",
+      serif: "\"Iowan Old Style\", \"Palatino Linotype\", \"URW Palladio L\", P052, serif",
+      mono: "ui-monospace, SFMono-Regular, Menlo, Consolas, \"Liberation Mono\", monospace",
+    };
+    const DEFAULT_PREVIEW_SETTINGS = {
+      font: "system",
+      fontSize: 13,
+      background: "#fdfdf9",
+    };
+
+    let previewSettings = loadPreviewSettings();
+
+    function normalizePreviewSettings(raw) {
+      const normalized = { ...DEFAULT_PREVIEW_SETTINGS };
+      if (raw && typeof raw === "object") {
+        if (typeof raw.font === "string" && raw.font in PREVIEW_FONTS) {
+          normalized.font = raw.font;
+        }
+        const parsedSize = Number(raw.fontSize);
+        if (Number.isFinite(parsedSize)) {
+          normalized.fontSize = clamp(parsedSize, PREVIEW_FONT_SIZE_RANGE.min, PREVIEW_FONT_SIZE_RANGE.max);
+        }
+        if (typeof raw.background === "string") {
+          const trimmed = raw.background.trim();
+          if (/^#[0-9a-f]{6}$/i.test(trimmed)) {
+            normalized.background = trimmed.toLowerCase();
+          }
+        }
+      }
+      return normalized;
+    }
+
+    function loadPreviewSettings() {
+      try {
+        const stored = localStorage.getItem(PREVIEW_SETTINGS_KEY);
+        if (!stored) return { ...DEFAULT_PREVIEW_SETTINGS };
+        const parsed = JSON.parse(stored);
+        return normalizePreviewSettings(parsed);
+      } catch {
+        return { ...DEFAULT_PREVIEW_SETTINGS };
+      }
+    }
+
+    function persistPreviewSettings() {
+      try {
+        localStorage.setItem(PREVIEW_SETTINGS_KEY, JSON.stringify(previewSettings));
+      } catch {}
+    }
+
+    function applyPreviewSettings() {
+      if (!els.highlightText) return;
+      const fontKey = previewSettings.font in PREVIEW_FONTS ? previewSettings.font : DEFAULT_PREVIEW_SETTINGS.font;
+      els.highlightText.style.fontFamily = PREVIEW_FONTS[fontKey];
+      const fontSize = clamp(
+        Number(previewSettings.fontSize) || DEFAULT_PREVIEW_SETTINGS.fontSize,
+        PREVIEW_FONT_SIZE_RANGE.min,
+        PREVIEW_FONT_SIZE_RANGE.max,
+      );
+      els.highlightText.style.fontSize = `${fontSize}px`;
+      const background = /^#[0-9a-f]{6}$/i.test(previewSettings.background)
+        ? previewSettings.background
+        : DEFAULT_PREVIEW_SETTINGS.background;
+      els.highlightText.style.backgroundColor = background;
+    }
+
+    function syncPreviewControls() {
+      if (els.previewFont) {
+        const fontKey = previewSettings.font in PREVIEW_FONTS ? previewSettings.font : DEFAULT_PREVIEW_SETTINGS.font;
+        els.previewFont.value = fontKey;
+      }
+      if (els.previewFontSize) {
+        const fontSize = clamp(
+          Number(previewSettings.fontSize) || DEFAULT_PREVIEW_SETTINGS.fontSize,
+          PREVIEW_FONT_SIZE_RANGE.min,
+          PREVIEW_FONT_SIZE_RANGE.max,
+        );
+        els.previewFontSize.value = String(fontSize);
+      }
+      if (els.previewBackground) {
+        const background = /^#[0-9a-f]{6}$/i.test(previewSettings.background)
+          ? previewSettings.background
+          : DEFAULT_PREVIEW_SETTINGS.background;
+        els.previewBackground.value = background;
+      }
+    }
+
+    function updatePreviewSetting(key, value) {
+      previewSettings = { ...previewSettings, [key]: value };
+      syncPreviewControls();
+      applyPreviewSettings();
+      persistPreviewSettings();
+    }
+
+    syncPreviewControls();
+    applyPreviewSettings();
 
     setupPanelResizer();
     function setupPanelResizer() {
@@ -1578,6 +1734,43 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       els.btnRandomizeText.addEventListener("click", () => {
         randomizePreviewText();
       });
+    }
+    if (els.previewFont) {
+      els.previewFont.addEventListener("change", (event) => {
+        const key = event.target.value;
+        const normalized = key in PREVIEW_FONTS ? key : DEFAULT_PREVIEW_SETTINGS.font;
+        updatePreviewSetting("font", normalized);
+      });
+    }
+    if (els.previewFontSize) {
+      els.previewFontSize.addEventListener("input", (event) => {
+        const raw = Number(event.target.value);
+        if (!Number.isFinite(raw) || raw < PREVIEW_FONT_SIZE_RANGE.min) {
+          return;
+        }
+        const normalized = clamp(raw, PREVIEW_FONT_SIZE_RANGE.min, PREVIEW_FONT_SIZE_RANGE.max);
+        updatePreviewSetting("fontSize", normalized);
+      });
+      els.previewFontSize.addEventListener("change", (event) => {
+        const raw = Number(event.target.value);
+        const normalized = clamp(
+          Number.isFinite(raw) ? raw : DEFAULT_PREVIEW_SETTINGS.fontSize,
+          PREVIEW_FONT_SIZE_RANGE.min,
+          PREVIEW_FONT_SIZE_RANGE.max,
+        );
+        event.target.value = String(normalized);
+        updatePreviewSetting("fontSize", normalized);
+      });
+    }
+    if (els.previewBackground) {
+      const applyBackgroundValue = (raw) => {
+        if (typeof raw !== "string") return;
+        const trimmed = raw.trim();
+        if (!/^#[0-9a-f]{6}$/i.test(trimmed)) return;
+        updatePreviewSetting("background", trimmed.toLowerCase());
+      };
+      els.previewBackground.addEventListener("input", (event) => applyBackgroundValue(event.target.value));
+      els.previewBackground.addEventListener("change", (event) => applyBackgroundValue(event.target.value));
     }
     els.sRGBGamut.addEventListener("click", applySRGBGamut);
     if (els.layoutMode) {
