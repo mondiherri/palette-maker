@@ -130,11 +130,25 @@
     #grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
     .grid.single-column { grid-template-columns: 1fr; }
     .swatch {
-      height: 76px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between;
-      padding: 10px; border: 1px solid rgba(0,0,0,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
+      min-height: 76px; border-radius: 12px; display: flex; flex-direction: column; justify-content: flex-start;
+      gap: 8px; padding: 10px; border: 1px solid rgba(0,0,0,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
     }
+    .swatch-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
     .swatch .meta { font-size: 11px; opacity: .9; }
     .swatch .tag { font-size: 11px; font-weight: 700; opacity: .85; }
+    .swatch-controls {
+      display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px;
+      background: rgba(255,255,255,0.18); border: 1px solid rgba(0,0,0,0.08);
+    }
+    .swatch-controls input[type="range"] {
+      width: 100%; accent-color: var(--accent);
+    }
+    .swatch-control-row {
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 600;
+    }
+    .swatch-control-label { white-space: nowrap; }
+    .swatch-control-value { font-variant-numeric: tabular-nums; opacity: .85; }
     .muted { color: var(--muted); }
     .small { font-size: 12px; }
     .footer { display:flex; justify-content: space-between; align-items: center; margin-top: 8px; }
@@ -728,6 +742,181 @@ oklch(72% 0.12 340)
     const buildOKLCH = (l,c,h)=> new Color("oklch",[clamp(l,0,1),clamp(c,0,0.4),normHue(h)]);
     const textColorFor = (bg) => (bg.oklch.l > 0.65 ? "#000" : "#fff");
     const fmtOKLCH = (c)=>`oklch(${(c.oklch.l*100).toFixed(1)}% ${c.oklch.c.toFixed(4)} ${isFinite(c.oklch.h)?c.oklch.h.toFixed(1):0})`;
+
+    const swatchSliderConfigs = [
+      {
+        key: "l",
+        label: "Lightness",
+        min: 0,
+        max: 100,
+        step: 0.1,
+        toSlider: (color) => clamp(color.oklch.l, 0, 1) * 100,
+        format: (value) => `${value.toFixed(1)}%`,
+        toColor: (value) => clamp(value / 100, 0, 1),
+      },
+      {
+        key: "c",
+        label: "Chroma",
+        min: 0,
+        max: 0.4,
+        step: 0.001,
+        toSlider: (color) => clamp(color.oklch.c, 0, 0.4),
+        format: (value) => value.toFixed(3),
+        toColor: (value) => clamp(value, 0, 0.4),
+      },
+      {
+        key: "h",
+        label: "Hue",
+        min: 0,
+        max: 360,
+        step: 1,
+        toSlider: (color) => (Number.isFinite(color.oklch.h) ? normHue(color.oklch.h) : 0),
+        format: (value) => `${Math.round(normHue(value))}°`,
+        toColor: (value) => normHue(value),
+      },
+    ];
+
+    function createSwatchMetaHTML(color) {
+      const srgbClone = color.clone();
+      srgbClone.toGamut({ space: "srgb" });
+      const srgbHex = srgbClone.toString({ format: "hex" });
+      return `<div>generated:       ${fmtOKLCH(color)}</div>
+                <div style="background: ${srgbHex}">Nearest in sRGB: ${srgbHex}</div>
+                <div style="background: ${srgbHex}">${fmtOKLCH(srgbClone)}</div>`;
+    }
+
+    function syncSwatchControls(container, color) {
+      if (!container) return;
+      for (const config of swatchSliderConfigs) {
+        const slider = container.querySelector(`input[data-component="${config.key}"]`);
+        const readout = container.querySelector(`span[data-component-value="${config.key}"]`);
+        if (!slider) continue;
+        const sliderValue = config.toSlider(color);
+        slider.value = String(sliderValue);
+        if (readout) {
+          readout.textContent = config.format(sliderValue);
+        }
+      }
+    }
+
+    function updateSwatchAppearance(swatchEl, metaEl, color) {
+      if (!swatchEl) return;
+      const displayColor = toDisplayColor(color);
+      swatchEl.style.background = colorToCss(displayColor);
+      swatchEl.style.color = textColorFor(displayColor.to("oklch"));
+      if (metaEl) {
+        metaEl.innerHTML = createSwatchMetaHTML(color);
+      }
+    }
+
+    function handleSwatchSliderInput(index, swatchEl, metaEl, controls) {
+      if (!controls) return null;
+      const values = {};
+      for (const config of swatchSliderConfigs) {
+        const slider = controls.querySelector(`input[data-component="${config.key}"]`);
+        if (!slider) return null;
+        const raw = parseFloat(slider.value);
+        if (!Number.isFinite(raw)) return null;
+        values[config.key] = config.toColor(raw);
+      }
+      const newColor = buildOKLCH(values.l, values.c, values.h);
+      palette[index] = newColor;
+      updateSwatchAppearance(swatchEl, metaEl, newColor);
+      syncSwatchControls(controls, newColor);
+      updatePaletteOutputs();
+      return newColor;
+    }
+
+    function createSwatchControls(index, color, swatchEl, metaEl) {
+      const container = document.createElement("div");
+      container.className = "swatch-controls";
+      for (const config of swatchSliderConfigs) {
+        const row = document.createElement("div");
+        row.className = "swatch-control-row";
+
+        const label = document.createElement("span");
+        label.className = "swatch-control-label";
+        label.textContent = config.label;
+
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = String(config.min);
+        slider.max = String(config.max);
+        slider.step = String(config.step);
+        const sliderValue = config.toSlider(color);
+        slider.value = String(sliderValue);
+        slider.dataset.index = String(index);
+        slider.dataset.component = config.key;
+
+        const readout = document.createElement("span");
+        readout.className = "swatch-control-value";
+        readout.dataset.componentValue = config.key;
+        readout.textContent = config.format(sliderValue);
+
+        slider.addEventListener("input", () => {
+          const current = parseFloat(slider.value);
+          if (Number.isFinite(current)) {
+            readout.textContent = config.format(current);
+          }
+          handleSwatchSliderInput(index, swatchEl, metaEl, container);
+        });
+
+        slider.addEventListener("change", () => {
+          handleSwatchSliderInput(index, swatchEl, metaEl, container);
+        });
+
+        row.append(label, slider, readout);
+        container.appendChild(row);
+      }
+      return container;
+    }
+
+    function createSwatchElement(color, index) {
+      const swatch = document.createElement("div");
+      swatch.className = "swatch";
+      swatch.dataset.index = String(index);
+
+      const header = document.createElement("div");
+      header.className = "swatch-header";
+
+      const tag = document.createElement("div");
+      tag.className = "tag";
+      tag.textContent = String(index + 1).padStart(2, "0");
+
+      const meta = document.createElement("div");
+      meta.className = "meta monospace";
+
+      header.append(tag, meta);
+      swatch.appendChild(header);
+
+      const controls = createSwatchControls(index, color, swatch, meta);
+      swatch.appendChild(controls);
+
+      updateSwatchAppearance(swatch, meta, color);
+      syncSwatchControls(controls, color);
+
+      return swatch;
+    }
+
+    function updatePaletteOutputs() {
+      const N = getTargetSize();
+      els.count.textContent = Math.min(palette.length, N);
+      if (palette.length) {
+        const Ls = palette.map(c => c.oklch.l);
+        const Cs = palette.map(c => c.oklch.c);
+        const avgΔ = averagePairwiseDistance(palette);
+        els.statL.textContent = `${(Math.min(...Ls) * 100).toFixed(0)}–${(Math.max(...Ls) * 100).toFixed(0)}%`;
+        els.statC.textContent = `${Math.min(...Cs).toFixed(3)}–${Math.max(...Cs).toFixed(3)}`;
+        els.statD.textContent = avgΔ.toFixed(3);
+      } else {
+        els.statL.textContent = els.statC.textContent = els.statD.textContent = "–";
+      }
+      updateTextPreview();
+      if (paletteLab?.getStats) {
+        const palObj = { Generated: Object.fromEntries(palette.slice(0, N).map((c, i) => [String(i + 1).padStart(2, "0"), { base: c.to("srgb").toString({ format: "hex" }) }])) };
+        try { paletteLab.getStats(palObj); } catch {}
+      }
+    }
 
     const fillerWords = `
 adaptive collaborative teams deliver consistent insights through modular workflows that balance exploratory analysis with steady operational reviews
@@ -1325,56 +1514,17 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
     function render(){
       updateLayoutMode();
       const N=getTargetSize(); els.targetSpan.textContent=String(N);
-      els.grid.innerHTML=""; 
-	  if(palette.length==0){
-		let init = parseColor(els.initialColor.value);
-		if(init) palette.push(init);
-	  }
-	  palette.forEach((col,i)=>{
-		const gamutCol = col.clone();
-		gamutCol.toGamut({space:"srgb"});
-		
-        const div=document.createElement("div"); 
-		div.className="swatch";
-		if (els.sRGBGamut.checked){
-			div.style.background = fmtOKLCH(gamutCol);
-		}
-		else{
-			div.style.background = fmtOKLCH(col);
-		}
-	
-
-		div.style.color=textColorFor(col);
-        const tag=document.createElement("div"); tag.className="tag"; 
-		tag.textContent=String(i+1).padStart(2,"0");
-        const meta=document.createElement("div"); 
-		meta.className="meta monospace";
-		
-        //meta.innerHTML=`<div>${fmtOKLCH(col)}</div><div>${col.toGamut({space:"srgb"}).toString({format:"hex"})}</div>`;
-		
-		//col.toGamut changes the value of color to the specified Gamut (e.g sRGB). clone color first!
-	//TODO: Change the background of the Hex color text to the srgb gamut background, to show which colors are possible. 
-		meta.innerHTML = `<div>generated:	${fmtOKLCH(col)}</div>
-		<div style="background: ${gamutCol.toGamut({space:"srgb"}).toString({format:"hex"})}">Nearest in sRGB: ${gamutCol.toGamut({space:"srgb"}).toString({format:"hex"})}</div>
-		<div style="background: ${gamutCol.toGamut({space:"srgb"}).toString({format:"hex"})}"> ${fmtOKLCH(gamutCol)}</div>`;
-		
-        div.append(tag,meta);
-                els.grid.appendChild(div);
+      els.grid.innerHTML="";
+          if(palette.length==0){
+                let init = parseColor(els.initialColor.value);
+                if(init) palette.push(init);
+          }
+          palette.forEach((col,i)=>{
+        const swatchEl = createSwatchElement(col, i);
+        els.grid.appendChild(swatchEl);
       });
-      updateTextPreview();
-      els.count.textContent=Math.min(palette.length,N);
-      if(palette.length){
-        const Ls=palette.map(c=>c.oklch.l), Cs=palette.map(c=>c.oklch.c), avgΔ=averagePairwiseDistance(palette);
-        els.statL.textContent=`${(Math.min(...Ls)*100).toFixed(0)}–${(Math.max(...Ls)*100).toFixed(0)}%`;
-        els.statC.textContent=`${Math.min(...Cs).toFixed(3)}–${Math.max(...Cs).toFixed(3)}`;
-        els.statD.textContent=avgΔ.toFixed(3);
-      } else { els.statL.textContent=els.statC.textContent=els.statD.textContent="–"; }
-      if(paletteLab?.getStats){
-        const palObj={ Generated:Object.fromEntries(palette.slice(0,N).map((c,i)=>[String(i+1).padStart(2,"0"),{base:c.to("srgb").toString({format:"hex"})}])) };
-        try{ paletteLab.getStats(palObj); }catch{}
-      }
+      updatePaletteOutputs();
     }
-
     // Init
     els.dirLReadout.textContent = `${els.dirL.value}%`;
     els.dirCReadout.textContent = `${parseFloat(els.dirC.value).toFixed(3)}`;
