@@ -66,6 +66,12 @@
       user-select: none;
     }
     .highlight-header { display: flex; justify-content: space-between; align-items: center; }
+    .highlight-header-text { display: flex; flex-direction: column; gap: 2px; }
+    .highlight-header button {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 999px;
+    }
     .highlight-legend { display: flex; flex-wrap: wrap; gap: 6px; }
     .legend-item {
       width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
@@ -388,8 +394,11 @@ oklch(72% 0.12 340)
       <div id="panelResizer" class="panel-resizer" role="separator" aria-orientation="vertical" aria-label="Resize palette and preview panels" aria-controls="palettePanel highlightPanel" tabindex="0"></div>
       <div class="card highlight-card" id="highlightPanel">
         <div class="highlight-header">
-          <div class="small">Document highlight preview</div>
-          <div class="small muted">Mapped to palette</div>
+          <div class="highlight-header-text">
+            <div class="small">Document highlight preview</div>
+            <div class="small muted">Mapped to palette</div>
+          </div>
+          <button id="btnRandomizeText" type="button" title="Replace preview text with a randomized sample">Randomize text</button>
         </div>
         <div id="highlightLegend" class="highlight-legend" aria-live="polite" aria-label="Palette legend"></div>
         <div class="highlight-body">
@@ -472,6 +481,7 @@ oklch(72% 0.12 340)
       btnCopyOKLCH: document.getElementById("btnCopyOKLCH"),
       btnCopyHex: document.getElementById("btnCopyHex"),
       btnCopyJSON: document.getElementById("btnCopyJSON"),
+      btnRandomizeText: document.getElementById("btnRandomizeText"),
       highlightText: document.getElementById("highlightText"),
       overviewCanvas: document.getElementById("overviewCanvas"),
       highlightLegend: document.getElementById("highlightLegend"),
@@ -687,9 +697,120 @@ oklch(72% 0.12 340)
 	return (color, list, tol) => list.some(o => oklchDistance(color,o) < tol);
 	}
     const randomIn = (min,max)=>min+Math.random()*(max-min);
+    const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
     const buildOKLCH = (l,c,h)=> new Color("oklch",[clamp(l,0,1),clamp(c,0,0.4),normHue(h)]);
     const textColorFor = (bg) => (bg.oklch.l > 0.65 ? "#000" : "#fff");
     const fmtOKLCH = (c)=>`oklch(${(c.oklch.l*100).toFixed(1)}% ${c.oklch.c.toFixed(4)} ${isFinite(c.oklch.h)?c.oklch.h.toFixed(1):0})`;
+
+    const fillerWords = `
+adaptive collaborative teams deliver consistent insights through modular workflows that balance exploratory analysis with steady operational reviews
+the system keeps every contributor aligned with evolving targets while dashboards surface meaningful context from shared datasets
+automated checks preserve data integrity across releases and provide timely feedback loops for distributed squads working across zones
+structured rituals encourage transparent communication so that handoffs remain smooth and every launch maintains momentum toward customer value
+curated guides highlight critical dependencies and recommended playbooks for complex scenarios enabling rapid discovery of relevant knowledge
+modular research notes capture lessons learned across iterations ensuring confident recovery paths and measurable service quality indicators for stakeholders
+thoughtful defaults streamline onboarding journeys and reduce friction for new collaborators joining active programs across the organization
+`.trim().split(/\s+/);
+    const punctuationMarks = [".", ".", ".", ".", "?", "!"];
+
+    function capitalizeWord(word) {
+      if (!word) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }
+
+    function createRandomParagraph(colorIndices) {
+      const words = [];
+      const wordCount = randomInt(18, 28);
+      for (let i = 0; i < wordCount; i++) {
+        words.push(fillerWords[randomInt(0, fillerWords.length - 1)]);
+      }
+      words[0] = capitalizeWord(words[0]);
+      const highlightCount = randomInt(2, 4);
+      const indices = Array.from({ length: wordCount }, (_, i) => i);
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = randomInt(0, i);
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      const segments = [];
+      const used = new Set();
+      let cursor = 0;
+      while (segments.length < highlightCount && cursor < indices.length) {
+        const start = indices[cursor++];
+        if (used.has(start)) continue;
+        const maxLen = Math.min(3, wordCount - start);
+        if (maxLen <= 0) continue;
+        let len = randomInt(1, maxLen);
+        let overlaps = false;
+        for (let offset = 0; offset < len; offset++) {
+          if (used.has(start + offset)) {
+            overlaps = true;
+            break;
+          }
+        }
+        if (overlaps) continue;
+        const colorIndex = colorIndices[randomInt(0, colorIndices.length - 1)];
+        segments.push({ start, len, colorIndex });
+        for (let offset = 0; offset < len; offset++) {
+          used.add(start + offset);
+        }
+      }
+      if (segments.length < highlightCount) {
+        for (let i = 0; i < wordCount && segments.length < highlightCount; i++) {
+          if (used.has(i)) continue;
+          const colorIndex = colorIndices[randomInt(0, colorIndices.length - 1)];
+          segments.push({ start: i, len: 1, colorIndex });
+          used.add(i);
+        }
+      }
+      segments.sort((a, b) => a.start - b.start);
+      const segmentMap = new Map(segments.map(seg => [seg.start, seg]));
+      const p = document.createElement("p");
+      let index = 0;
+      while (index < wordCount) {
+        const seg = segmentMap.get(index);
+        if (seg) {
+          const span = document.createElement("span");
+          span.dataset.colorIndex = String(seg.colorIndex);
+          span.textContent = words.slice(index, index + seg.len).join(" ");
+          p.appendChild(span);
+          index += seg.len;
+        } else {
+          p.appendChild(document.createTextNode(words[index]));
+          index += 1;
+        }
+        if (index < wordCount) {
+          p.appendChild(document.createTextNode(" "));
+        }
+      }
+      const punctuation = punctuationMarks[randomInt(0, punctuationMarks.length - 1)];
+      p.appendChild(document.createTextNode(punctuation));
+      return p;
+    }
+
+    function randomizePreviewText() {
+      if (!els.highlightText) return;
+      const container = els.highlightText;
+      const availableColors = Math.min(palette.length, getTargetSize());
+      const colorIndices = availableColors > 0
+        ? Array.from({ length: availableColors }, (_, i) => i)
+        : [0];
+      const styles = window.getComputedStyle(container);
+      let lineHeight = parseFloat(styles.lineHeight);
+      if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
+        const fontSize = parseFloat(styles.fontSize) || 13;
+        lineHeight = fontSize * 1.55;
+      }
+      const containerHeight = container.clientHeight || 360;
+      const paragraphCount = Math.max(12, Math.ceil(containerHeight / lineHeight) + 6);
+      const fragment = document.createDocumentFragment();
+      for (let i = 0; i < paragraphCount; i++) {
+        fragment.appendChild(createRandomParagraph(colorIndices));
+      }
+      container.innerHTML = "";
+      container.appendChild(fragment);
+      container.scrollTop = 0;
+      updateTextPreview();
+    }
 
     function toDisplayColor(color) {
       const clone = color.clone();
@@ -1069,6 +1190,11 @@ oklch(72% 0.12 340)
     els.btnCopyOKLCH.addEventListener("click", copyOKLCH);
     els.btnCopyHex.addEventListener("click", copyHex);
     els.btnCopyJSON.addEventListener("click", copyJSON);
+    if (els.btnRandomizeText) {
+      els.btnRandomizeText.addEventListener("click", () => {
+        randomizePreviewText();
+      });
+    }
     els.sRGBGamut.addEventListener("click", applySRGBGamut);
     if (els.layoutMode) {
       els.layoutMode.addEventListener("change", updateLayoutMode);
@@ -1172,6 +1298,7 @@ oklch(72% 0.12 340)
     updateDirectionalPreview();
     activateTab("basic");
     render();
+    randomizePreviewText();
   </script>
 </body>
 </html>
