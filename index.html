@@ -510,7 +510,7 @@ oklch(72% 0.12 340)
           <div id="overviewPanel" class="overview-panel" aria-label="Highlight overview">
             <div id="overviewHeader" class="overview-header" aria-live="polite" aria-label="Palette lanes overview"></div>
             <div class="overview-wrap">
-              <canvas id="overviewCanvas" width="96" height="360" role="img" aria-label="Highlight overview"></canvas>
+              <canvas id="overviewCanvas" width="96" height="720" role="img" aria-label="Highlight overview"></canvas>
             </div>
           </div>
         </div>
@@ -530,7 +530,7 @@ oklch(72% 0.12 340)
       initialColor: document.getElementById("initialColor"),
       hueExStart: document.getElementById("hueExStart"),
       hueExEnd: document.getElementById("hueExEnd"),
-	  sRGBGamut: document.getElementById("sRGBGamut"),
+	    sRGBGamut: document.getElementById("sRGBGamut"),
       inputColors: document.getElementById("inputColors"),
       lMin: document.getElementById("lMin"), lMax: document.getElementById("lMax"),
       cMin: document.getElementById("cMin"), cMax: document.getElementById("cMax"),
@@ -1149,7 +1149,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       if (width === 0 || height === 0) return;
       const dpr = window.devicePixelRatio || 1;
       const targetW = Math.max(1, Math.round(width * dpr));
-      const targetH = Math.max(1, Math.round(height * dpr));
+      const targetH = canvas.height ; //Math.max(1, Math.round(height * dpr));
       if (canvas.width !== targetW || canvas.height !== targetH) {
         canvas.width = targetW;
         canvas.height = targetH;
