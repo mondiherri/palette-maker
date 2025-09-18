@@ -12,10 +12,39 @@
       font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
     }
     h1 { font-size: 18px; margin: 0 0 12px; }
-    .app { display: grid; grid-template-columns: 420px 1fr; gap: 20px; align-items: start; }
+    .app { display: grid; grid-template-columns: 420px minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
     .card {
       background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 1px 0 rgba(0,0,0,.04);
     }
+    .highlight-card { display: flex; flex-direction: column; gap: 12px; }
+    .highlight-header { display: flex; justify-content: space-between; align-items: center; }
+    .highlight-legend { display: flex; flex-wrap: wrap; gap: 6px; }
+    .legend-item {
+      width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.18); transition: transform .15s ease; cursor: default;
+    }
+    .legend-item:hover { transform: translateY(-1px); }
+    .legend-more { font-size: 12px; font-weight: 600; color: var(--muted); align-self: center; }
+    .highlight-body { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 12px; align-items: stretch; }
+    .sample-text {
+      background: #fdfdf9; border: 1px solid var(--border); border-radius: 12px; padding: 12px; line-height: 1.55;
+      color: #2a2a2a; box-shadow: inset 0 1px 0 rgba(255,255,255,.6); height: 360px; overflow-y: auto; position: relative;
+      font-size: 13px;
+    }
+    .sample-text p { margin: 0 0 10px; }
+    .sample-text p:last-child { margin-bottom: 0; }
+    .sample-text span[data-color-index] {
+      border-radius: 6px; padding: 1px 4px; margin: 0 1px; transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.4);
+    }
+    .sample-text span[data-color-index].inactive {
+      background: rgba(0,0,0,0.06); color: #444; box-shadow: inset 0 0 0 1px rgba(255,255,255,.6);
+    }
+    .overview-wrap {
+      border: 1px solid var(--border); border-radius: 12px; background: #1f1f1f; padding: 10px; display: flex;
+      align-items: stretch; justify-content: center; height: 360px;
+    }
+    .overview-wrap canvas { width: 100%; height: 100%; display: block; border-radius: 8px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     label { font-weight: 600; font-size: 12px; color: #333; display: block; margin-bottom: 6px; }
     input[type="text"], input[type="number"], textarea, select {
@@ -88,7 +117,16 @@
     /* Export footer */
     .export { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
 
+    @media (max-width: 1200px) {
+      .app { grid-template-columns: 420px minmax(0, 1fr); }
+      .highlight-card { grid-column: 1 / -1; }
+    }
     @media (max-width: 1000px) { .app { grid-template-columns: 1fr; } .grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 900px) {
+      .highlight-body { grid-template-columns: 1fr; }
+      .sample-text { height: 280px; }
+      .overview-wrap { height: 280px; }
+    }
     @media (max-width: 640px) { .grid { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
@@ -261,6 +299,48 @@ oklch(72% 0.12 340)
       </div>
       <div id="grid" class="grid" style="margin-top:10px;"></div>
     </div>
+
+    <!-- RIGHTMOST: Highlight preview -->
+    <div class="card highlight-card">
+      <div class="highlight-header">
+        <div class="small">Document highlight preview</div>
+        <div class="small muted">Mapped to palette</div>
+      </div>
+      <div id="highlightLegend" class="highlight-legend" aria-live="polite" aria-label="Palette legend"></div>
+      <div class="highlight-body">
+        <div id="highlightText" class="sample-text" aria-label="Example document with highlights">
+          <p>
+            obtain the <span data-color-index="0">codebook</span> corresponding to the first <span data-color-index="1">data set</span>.
+            The <span data-color-index="2">first preset number</span> and the <span data-color-index="3">second preset number</span>
+            may be set according to actual situations, which is not specifically limited in embodiments of the
+            <span data-color-index="4">present disclosure</span>.
+          </p>
+          <p>
+            <span data-color-index="5">[0066]</span> Particularly, it is assumed that there are
+            <span data-color-index="6">N training samples</span>, and the number of dimensions D of each sample are
+            <span data-color-index="7">64</span>. Each sample is divided into <span data-color-index="8">M=8 segments</span>, and each
+            segment is clustered into <span data-color-index="9">K=256 classes</span> to obtain
+            <span data-color-index="10">M*K cluster centers</span>. The number of dimensions of each cluster center are
+            <span data-color-index="11">D/M</span>, and these cluster centers are called a
+            <span data-color-index="12">codebook</span>.
+          </p>
+          <p>
+            During training, each <span data-color-index="13">cluster center</span> is updated through iteration, and the
+            <span data-color-index="14">vector quantization</span> loss encourages <span data-color-index="15">convergence</span>
+            while stabilizing the <span data-color-index="16">reconstruction error</span> for subsequent deployments.
+          </p>
+          <p>
+            When deployed, the <span data-color-index="17">encoded samples</span> are matched against a
+            <span data-color-index="18">lookup table</span> to accelerate <span data-color-index="19">inference</span>, and the
+            <span data-color-index="20">calibration stage</span> verifies the <span data-color-index="21">quantized outputs</span>
+            under varying <span data-color-index="22">production conditions</span>.
+          </p>
+        </div>
+        <div class="overview-wrap">
+          <canvas id="overviewCanvas" width="96" height="360" role="img" aria-label="Highlight overview"></canvas>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module">
@@ -306,6 +386,9 @@ oklch(72% 0.12 340)
       btnCopyOKLCH: document.getElementById("btnCopyOKLCH"),
       btnCopyHex: document.getElementById("btnCopyHex"),
       btnCopyJSON: document.getElementById("btnCopyJSON"),
+      highlightText: document.getElementById("highlightText"),
+      overviewCanvas: document.getElementById("overviewCanvas"),
+      highlightLegend: document.getElementById("highlightLegend"),
     };
 
     function activateTab(which) {
@@ -354,6 +437,122 @@ oklch(72% 0.12 340)
     const buildOKLCH = (l,c,h)=> new Color("oklch",[clamp(l,0,1),clamp(c,0,0.4),normHue(h)]);
     const textColorFor = (bg) => (bg.oklch.l > 0.65 ? "#000" : "#fff");
     const fmtOKLCH = (c)=>`oklch(${(c.oklch.l*100).toFixed(1)}% ${c.oklch.c.toFixed(4)} ${isFinite(c.oklch.h)?c.oklch.h.toFixed(1):0})`;
+
+    function toDisplayColor(color) {
+      const clone = color.clone();
+      clone.toGamut({ space: "srgb" });
+      return clone;
+    }
+
+    function updateLegend(colors) {
+      if (!els.highlightLegend) return;
+      const legend = els.highlightLegend;
+      legend.innerHTML = "";
+      if (!colors.length) {
+        const msg = document.createElement("div");
+        msg.className = "muted small";
+        msg.textContent = "Add colors to map highlights.";
+        legend.appendChild(msg);
+        return;
+      }
+      const maxLegend = 12;
+      for (let i = 0; i < Math.min(colors.length, maxLegend); i++) {
+        const color = colors[i];
+        if (!color) continue;
+        const display = toDisplayColor(color);
+        const chip = document.createElement("span");
+        chip.className = "legend-item";
+        chip.style.backgroundColor = display.toString({ format: "hex" });
+        chip.style.color = textColorFor(display.to("oklch"));
+        chip.textContent = i < 26 ? String.fromCharCode(65 + i) : String(i + 1);
+        chip.title = `${fmtOKLCH(color)} | ${display.toString({ format: "hex" })}`;
+        legend.appendChild(chip);
+      }
+      if (colors.length > maxLegend) {
+        const more = document.createElement("span");
+        more.className = "legend-more";
+        more.textContent = `+${colors.length - maxLegend}`;
+        legend.appendChild(more);
+      }
+    }
+
+    function drawOverview(spans, colors) {
+      if (!els.overviewCanvas || !els.highlightText) return;
+      const canvas = els.overviewCanvas;
+      const container = els.highlightText;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      if (width === 0 || height === 0) return;
+      const dpr = window.devicePixelRatio || 1;
+      const targetW = Math.max(1, Math.round(width * dpr));
+      const targetH = Math.max(1, Math.round(height * dpr));
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#2a2a2a";
+      ctx.fillRect(0, 0, width, height);
+      const contentHeight = container.scrollHeight || 1;
+      const offsetX = 8;
+      const barWidth = Math.max(4, width - offsetX * 2);
+      spans.forEach(span => {
+        const raw = Number(span.dataset.colorIndex);
+        if (!Number.isFinite(raw)) return;
+        const color = colors[raw];
+        if (!color) return;
+        const display = toDisplayColor(color);
+        const fill = display.toString({ format: "hex" });
+        const start = span.offsetTop;
+        const end = start + span.offsetHeight;
+        const y = (start / contentHeight) * height;
+        const h = Math.max(3, ((end - start) / contentHeight) * height);
+        ctx.fillStyle = fill;
+        ctx.fillRect(offsetX, y, barWidth, h);
+      });
+      const viewRatio = container.clientHeight / contentHeight;
+      if (viewRatio < 0.999) {
+        const overlayHeight = Math.max(6, viewRatio * height);
+        const overlayY = (container.scrollTop / contentHeight) * height;
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
+        ctx.fillRect(offsetX, overlayY, barWidth, overlayHeight);
+      }
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
+      ctx.restore();
+    }
+
+    function updateTextPreview() {
+      if (!els.highlightText) return;
+      const colors = palette.slice(0, getTargetSize());
+      const spans = Array.from(els.highlightText.querySelectorAll("[data-color-index]"));
+      spans.forEach(span => {
+        const raw = Number(span.dataset.colorIndex);
+        const color = Number.isFinite(raw) ? colors[raw] : null;
+        if (color) {
+          const display = toDisplayColor(color);
+          const ok = display.to("oklch");
+          span.style.backgroundColor = display.toString({ format: "hex" });
+          span.style.color = textColorFor(ok);
+          span.style.boxShadow = "0 0 0 1px rgba(0,0,0,0.12)";
+          span.classList.remove("inactive");
+          span.title = `${fmtOKLCH(color)} | ${display.toString({ format: "hex" })}`;
+        } else {
+          span.style.backgroundColor = "";
+          span.style.color = "";
+          span.style.boxShadow = "";
+          span.classList.add("inactive");
+          span.removeAttribute("title");
+        }
+      });
+      updateLegend(colors);
+      drawOverview(spans, colors);
+    }
 
     function averagePairwiseDistance(cols) {
       if (cols.length < 2) return 0; let sum=0,n=0;
@@ -630,6 +829,27 @@ oklch(72% 0.12 340)
       });
     });
 
+    if (els.highlightText) {
+      let scrolling = false;
+      els.highlightText.addEventListener("scroll", ()=>{
+        if (scrolling) return;
+        scrolling = true;
+        requestAnimationFrame(()=>{
+          scrolling = false;
+          const spans = Array.from(els.highlightText.querySelectorAll("[data-color-index]"));
+          drawOverview(spans, palette.slice(0, getTargetSize()));
+        });
+      });
+    }
+
+    let resizeTimer = null;
+    window.addEventListener("resize", ()=>{
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(()=>{
+        updateTextPreview();
+      }, 120);
+    });
+
     function render(){
       const N=getTargetSize(); els.targetSpan.textContent=String(N);
       els.grid.innerHTML=""; 
@@ -665,9 +885,10 @@ oklch(72% 0.12 340)
 		<div style="background: ${gamutCol.toGamut({space:"srgb"}).toString({format:"hex"})}">Nearest in sRGB: ${gamutCol.toGamut({space:"srgb"}).toString({format:"hex"})}</div>
 		<div style="background: ${gamutCol.toGamut({space:"srgb"}).toString({format:"hex"})}"> ${fmtOKLCH(gamutCol)}</div>`;
 		
-        div.append(tag,meta); 
-		els.grid.appendChild(div);
+        div.append(tag,meta);
+                els.grid.appendChild(div);
       });
+      updateTextPreview();
       els.count.textContent=Math.min(palette.length,N);
       if(palette.length){
         const Ls=palette.map(c=>c.oklch.l), Cs=palette.map(c=>c.oklch.c), avgΔ=averagePairwiseDistance(palette);
