@@ -97,8 +97,9 @@
     .overview-header {
       --lane-count: 1;
       --lane-gap: 6px;
+      --lane-width: minmax(0, 1fr);
       display: grid;
-      grid-template-columns: repeat(var(--lane-count), minmax(0, 1fr));
+      grid-template-columns: repeat(var(--lane-count), var(--lane-width));
       gap: var(--lane-gap);
       align-items: stretch;
       justify-items: stretch;
@@ -132,7 +133,7 @@
       color: #111;
     }
     .highlight-body {
-      display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 12px; align-items: stretch;
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, max-content); gap: 12px; align-items: stretch;
       flex: 1 1 auto; height: 100%; min-height: 0;
     }
     .sample-text {
@@ -153,7 +154,8 @@
       flex: 1 1 auto;
       min-height: 0;
       border-radius: 8px;
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
     }
     .overview-wrap canvas { width: 100%; height: 100%; display: block; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -583,6 +585,12 @@ oklch(72% 0.12 340)
 
     let palette = [];
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const OVERVIEW_RECT_WIDTH = 22;
+    const OVERVIEW_RECT_HEIGHT = 6;
+    const OVERVIEW_LANE_GAP = 6;
+    const getOverviewTotalWidth = (count) => count > 0
+      ? (count * OVERVIEW_RECT_WIDTH) + ((count - 1) * OVERVIEW_LANE_GAP)
+      : 0;
 
     setupPanelResizer();
     function setupPanelResizer() {
@@ -1112,6 +1120,9 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       header.classList.toggle("empty", colors.length === 0);
       if (!colors.length) {
         header.style.removeProperty("--lane-count");
+        header.style.removeProperty("--lane-width");
+        header.style.removeProperty("--lane-gap");
+        header.style.removeProperty("width");
         const icon = document.createElement("span");
         icon.className = "overview-empty-icon";
         icon.setAttribute("aria-hidden", "true");
@@ -1120,7 +1131,12 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         header.append(icon, msg);
         return;
       }
-      header.style.setProperty("--lane-count", String(colors.length));
+      const laneCount = colors.length;
+      const headerWidth = Math.max(1, Math.round(getOverviewTotalWidth(laneCount)));
+      header.style.setProperty("--lane-count", String(laneCount));
+      header.style.setProperty("--lane-width", `${OVERVIEW_RECT_WIDTH}px`);
+      header.style.setProperty("--lane-gap", `${OVERVIEW_LANE_GAP}px`);
+      header.style.width = `${headerWidth}px`;
       colors.forEach((color, i) => {
         if (!color) return;
         const display = toDisplayColor(color);
@@ -1144,8 +1160,21 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       if (!els.overviewCanvas || !els.highlightText) return;
       const canvas = els.overviewCanvas;
       const container = els.highlightText;
-      const width = canvas.clientWidth;
-      const height = canvas.clientHeight;
+      const colorCount = colors.length;
+
+      if (colorCount > 0) {
+        const desiredCssWidth = Math.max(1, Math.round(getOverviewTotalWidth(colorCount)));
+        const currentWidth = Math.round(canvas.getBoundingClientRect().width || canvas.clientWidth || 0);
+        if (currentWidth !== desiredCssWidth) {
+          canvas.style.width = `${desiredCssWidth}px`;
+        }
+      } else if (canvas.style.width) {
+        canvas.style.removeProperty("width");
+      }
+
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
       if (width === 0 || height === 0) return;
       const dpr = window.devicePixelRatio || 1;
       const targetW = Math.max(1, Math.round(width * dpr));
@@ -1162,7 +1191,6 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       ctx.fillStyle = "#181818";
       ctx.fillRect(0, 0, width, height);
 
-      const colorCount = colors.length;
       if (!colorCount) {
         ctx.strokeStyle = "rgba(255,255,255,0.08)";
         ctx.lineWidth = 1;
@@ -1171,43 +1199,12 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         return;
       }
 
-      let lanes = null;
-      const header = els.overviewHeader;
-      if (header) {
-        const chips = Array.from(header.querySelectorAll(".overview-chip"));
-        const headerRect = header.getBoundingClientRect();
-        if (headerRect.width > 0 && chips.length === colorCount) {
-          const scale = headerRect.width ? width / headerRect.width : 1;
-          lanes = chips.map(chip => {
-            const rect = chip.getBoundingClientRect();
-            return {
-              x: (rect.left - headerRect.left) * scale,
-              w: rect.width * scale,
-            };
-          });
-        }
-      }
-
-      if (!lanes) {
-        let gap = 0;
-        if (header) {
-          const styles = window.getComputedStyle(header);
-          gap = parseFloat(styles.columnGap || styles.gap || "0") || 0;
-        }
-        if (colorCount > 1) {
-          const maxGap = width / colorCount;
-          gap = Math.min(gap, maxGap);
-        } else {
-          gap = 0;
-        }
-        const totalGap = gap * Math.max(0, colorCount - 1);
-        const available = Math.max(width - totalGap, 0);
-        const laneWidth = colorCount ? available / colorCount : width;
-        lanes = Array.from({ length: colorCount }, (_, i) => ({
-          x: i * (laneWidth + gap),
-          w: laneWidth,
-        }));
-      }
+      const totalLaneWidth = getOverviewTotalWidth(colorCount);
+      const startX = Math.max(0, width > totalLaneWidth ? (width - totalLaneWidth) / 2 : 0);
+      const lanes = Array.from({ length: colorCount }, (_, i) => ({
+        x: startX + i * (OVERVIEW_RECT_WIDTH + OVERVIEW_LANE_GAP),
+        w: OVERVIEW_RECT_WIDTH,
+      }));
 
       const contentHeight = container.scrollHeight || 1;
       const viewportHeight = container.clientHeight || 1;
@@ -1228,15 +1225,11 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         const fill = colorToCss(display);
         const start = span.offsetTop;
         const end = start + span.offsetHeight;
-        const y = (start / contentHeight) * height;
-        const h = Math.max(3, ((end - start) / contentHeight) * height);
-        const pad = Math.min(lane.w * 0.25, 6);
-        let rectWidth = lane.w - pad * 2;
-        if (!Number.isFinite(rectWidth) || rectWidth <= 0) rectWidth = lane.w;
-        rectWidth = Math.max(0.5, Math.min(rectWidth, lane.w));
-        const x = lane.x + (lane.w - rectWidth) / 2;
+        const center = start + (end - start) / 2;
+        const scaledCenter = (center / contentHeight) * height;
+        const rectY = clamp(scaledCenter - (OVERVIEW_RECT_HEIGHT / 2), 0, Math.max(0, height - OVERVIEW_RECT_HEIGHT));
         ctx.fillStyle = fill;
-        ctx.fillRect(x, y, rectWidth, h);
+        ctx.fillRect(lane.x, rectY, lane.w, OVERVIEW_RECT_HEIGHT);
       });
 
       if (viewportHeight < contentHeight) {
