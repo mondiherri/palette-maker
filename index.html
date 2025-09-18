@@ -479,6 +479,42 @@ oklch(72% 0.12 340)
                   <option value="humanist">Humanist Sans</option>
                   <option value="serif">Serif</option>
                   <option value="mono">Monospace</option>
+			<!-- Font options that should be added:
+"Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif
+Arial
+Arial Black
+Calibri
+Cambria
+Candara
+Comic Sans MS
+Consolas
+Constantia
+Corbel
+Courier New
+Dotum
+Ebrima
+Franklin Gothic Medium
+Gabriola
+Georgia
+Leelawadee
+Lucida Sans Unicode
+Malgun Gothic
+Microsoft Himalaya
+Microsoft JhengHei
+Microsoft New Tai Lue
+Microsoft PhagsPa
+Microsoft Sans Serif
+Microsoft Tai Le
+Microsoft YaHei
+Palatino Linotype
+Segoe Print
+Segoe UI
+Tahoma
+Times New Roman
+Trebuchet MS
+Verdana
+-->
+					
                 </select>
               </div>
               <div>
@@ -1861,6 +1897,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
     els.dirLReadout.textContent = `${els.dirL.value}%`;
     els.dirCReadout.textContent = `${parseFloat(els.dirC.value).toFixed(3)}`;
     updateHueSliderGradient();
+
     updateDirectionalPreview();
     activateTab("basic");
     render();
