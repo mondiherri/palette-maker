@@ -82,13 +82,55 @@
       padding: 6px 12px;
       border-radius: 999px;
     }
-    .highlight-legend { display: flex; flex-wrap: wrap; gap: 6px; }
-    .legend-item {
-      width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.18); transition: transform .15s ease; cursor: default;
+    .overview-panel {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #1f1f1f;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: 100%;
+      min-height: 0;
+      align-items: stretch;
     }
-    .legend-item:hover { transform: translateY(-1px); }
-    .legend-more { font-size: 12px; font-weight: 600; color: var(--muted); align-self: center; }
+    .overview-header {
+      --lane-count: 1;
+      --lane-gap: 6px;
+      display: grid;
+      grid-template-columns: repeat(var(--lane-count), minmax(0, 1fr));
+      gap: var(--lane-gap);
+      align-items: stretch;
+      justify-items: stretch;
+      min-height: 30px;
+    }
+    .overview-header.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+    }
+    .overview-empty-icon {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.3);
+    }
+    .overview-chip {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: 0 1px 2px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.18);
+      color: #111;
+    }
     .highlight-body {
       display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 12px; align-items: stretch;
       flex: 1 1 auto; height: 100%; min-height: 0;
@@ -108,10 +150,12 @@
       background: rgba(0,0,0,0.06); color: #444; box-shadow: inset 0 0 0 1px rgba(255,255,255,.6);
     }
     .overview-wrap {
-      border: 1px solid var(--border); border-radius: 12px; background: #1f1f1f; padding: 10px; display: flex;
-      align-items: stretch; justify-content: center; height: 100%; min-height: 0;
+      flex: 1 1 auto;
+      min-height: 0;
+      border-radius: 8px;
+      overflow: hidden;
     }
-    .overview-wrap canvas { width: 100%; height: 100%; display: block; border-radius: 8px; }
+    .overview-wrap canvas { width: 100%; height: 100%; display: block; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     label { font-weight: 600; font-size: 12px; color: #333; display: block; margin-bottom: 6px; }
     input[type="text"], input[type="number"], textarea, select {
@@ -434,7 +478,6 @@ oklch(72% 0.12 340)
           </div>
           <button id="btnRandomizeText" type="button" title="Replace preview text with a randomized sample">Randomize text</button>
         </div>
-        <div id="highlightLegend" class="highlight-legend" aria-live="polite" aria-label="Palette legend"></div>
         <div class="highlight-body">
           <div id="highlightText" class="sample-text" aria-label="Example document with highlights">
           <p>
@@ -464,11 +507,14 @@ oklch(72% 0.12 340)
             under varying <span data-color-index="22">production conditions</span>.
           </p>
         </div>
-        <div class="overview-wrap">
-          <canvas id="overviewCanvas" width="96" height="360" role="img" aria-label="Highlight overview"></canvas>
+          <div id="overviewPanel" class="overview-panel" aria-label="Highlight overview">
+            <div id="overviewHeader" class="overview-header" aria-live="polite" aria-label="Palette lanes overview"></div>
+            <div class="overview-wrap">
+              <canvas id="overviewCanvas" width="96" height="360" role="img" aria-label="Highlight overview"></canvas>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
   </div>
 
   <script type="module">
@@ -518,7 +564,7 @@ oklch(72% 0.12 340)
       btnRandomizeText: document.getElementById("btnRandomizeText"),
       highlightText: document.getElementById("highlightText"),
       overviewCanvas: document.getElementById("overviewCanvas"),
-      highlightLegend: document.getElementById("highlightLegend"),
+      overviewHeader: document.getElementById("overviewHeader"),
       palettePanel: document.getElementById("palettePanel"),
       highlightPanel: document.getElementById("highlightPanel"),
       panelResizer: document.getElementById("panelResizer"),
@@ -1049,38 +1095,49 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       return fmtOKLCH(color);
     }
 
-    function updateLegend(colors) {
-      if (!els.highlightLegend) return;
-      const legend = els.highlightLegend;
-      legend.innerHTML = "";
+    function indexToLabel(i) {
+      let n = i;
+      let out = "";
+      while (n >= 0) {
+        out = String.fromCharCode(65 + (n % 26)) + out;
+        n = Math.floor(n / 26) - 1;
+      }
+      return out;
+    }
+
+    function updateOverviewHeader(colors) {
+      if (!els.overviewHeader) return;
+      const header = els.overviewHeader;
+      header.innerHTML = "";
+      header.classList.toggle("empty", colors.length === 0);
       if (!colors.length) {
-        const msg = document.createElement("div");
-        msg.className = "muted small";
+        header.style.removeProperty("--lane-count");
+        const icon = document.createElement("span");
+        icon.className = "overview-empty-icon";
+        icon.setAttribute("aria-hidden", "true");
+        const msg = document.createElement("span");
         msg.textContent = "Add colors to map highlights.";
-        legend.appendChild(msg);
+        header.append(icon, msg);
         return;
       }
-      const maxLegend = 12;
-      for (let i = 0; i < Math.min(colors.length, maxLegend); i++) {
-        const color = colors[i];
-        if (!color) continue;
+      header.style.setProperty("--lane-count", String(colors.length));
+      colors.forEach((color, i) => {
+        if (!color) return;
         const display = toDisplayColor(color);
-        const chip = document.createElement("span");
-        chip.className = "legend-item";
+        const label = indexToLabel(i);
+        const chip = document.createElement("div");
+        chip.className = "overview-chip";
         chip.style.backgroundColor = colorToCss(display);
         chip.style.color = textColorFor(display.to("oklch"));
-        chip.textContent = i < 26 ? String.fromCharCode(65 + i) : String(i + 1);
+        chip.textContent = label;
         const srgbClone = color.clone();
         srgbClone.toGamut({ space: "srgb" });
-        chip.title = `${fmtOKLCH(color)} | ${srgbClone.toString({ format: "hex" })}`;
-        legend.appendChild(chip);
-      }
-      if (colors.length > maxLegend) {
-        const more = document.createElement("span");
-        more.className = "legend-more";
-        more.textContent = `+${colors.length - maxLegend}`;
-        legend.appendChild(more);
-      }
+        const chipLabel = `${fmtOKLCH(color)} | ${srgbClone.toString({ format: "hex" })}`;
+        chip.title = chipLabel;
+        chip.setAttribute("aria-label", `${label} lane: ${chipLabel}`);
+        chip.setAttribute("data-index", String(i));
+        header.appendChild(chip);
+      });
     }
 
     function drawOverview(spans, colors) {
@@ -1102,14 +1159,69 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       ctx.save();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "#4a4848";
+      ctx.fillStyle = "#181818";
       ctx.fillRect(0, 0, width, height);
+
+      const colorCount = colors.length;
+      if (!colorCount) {
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
+        ctx.restore();
+        return;
+      }
+
+      let lanes = null;
+      const header = els.overviewHeader;
+      if (header) {
+        const chips = Array.from(header.querySelectorAll(".overview-chip"));
+        const headerRect = header.getBoundingClientRect();
+        if (headerRect.width > 0 && chips.length === colorCount) {
+          const scale = headerRect.width ? width / headerRect.width : 1;
+          lanes = chips.map(chip => {
+            const rect = chip.getBoundingClientRect();
+            return {
+              x: (rect.left - headerRect.left) * scale,
+              w: rect.width * scale,
+            };
+          });
+        }
+      }
+
+      if (!lanes) {
+        let gap = 0;
+        if (header) {
+          const styles = window.getComputedStyle(header);
+          gap = parseFloat(styles.columnGap || styles.gap || "0") || 0;
+        }
+        if (colorCount > 1) {
+          const maxGap = width / colorCount;
+          gap = Math.min(gap, maxGap);
+        } else {
+          gap = 0;
+        }
+        const totalGap = gap * Math.max(0, colorCount - 1);
+        const available = Math.max(width - totalGap, 0);
+        const laneWidth = colorCount ? available / colorCount : width;
+        lanes = Array.from({ length: colorCount }, (_, i) => ({
+          x: i * (laneWidth + gap),
+          w: laneWidth,
+        }));
+      }
+
       const contentHeight = container.scrollHeight || 1;
-      const offsetX = 8;
-      const barWidth = Math.max(4, width - offsetX * 2);
+      const viewportHeight = container.clientHeight || 1;
+
+      lanes.forEach(lane => {
+        ctx.fillStyle = "rgba(255,255,255,0.04)";
+        ctx.fillRect(lane.x, 0, lane.w, height);
+      });
+
       spans.forEach(span => {
         const raw = Number(span.dataset.colorIndex);
-        if (!Number.isFinite(raw)) return;
+        if (!Number.isFinite(raw) || raw < 0 || raw >= colorCount) return;
+        const lane = lanes[raw];
+        if (!lane) return;
         const color = colors[raw];
         if (!color) return;
         const display = toDisplayColor(color);
@@ -1118,17 +1230,23 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         const end = start + span.offsetHeight;
         const y = (start / contentHeight) * height;
         const h = Math.max(3, ((end - start) / contentHeight) * height);
+        const pad = Math.min(lane.w * 0.25, 6);
+        let rectWidth = lane.w - pad * 2;
+        if (!Number.isFinite(rectWidth) || rectWidth <= 0) rectWidth = lane.w;
+        rectWidth = Math.max(0.5, Math.min(rectWidth, lane.w));
+        const x = lane.x + (lane.w - rectWidth) / 2;
         ctx.fillStyle = fill;
-        ctx.fillRect(offsetX, y, barWidth, h);
+        ctx.fillRect(x, y, rectWidth, h);
       });
-      const viewRatio = container.clientHeight / contentHeight;
-      if (viewRatio < 0.999) {
-        const overlayHeight = Math.max(6, viewRatio * height);
+
+      if (viewportHeight < contentHeight) {
+        const overlayHeight = Math.max(6, (viewportHeight / contentHeight) * height);
         const overlayY = (container.scrollTop / contentHeight) * height;
         ctx.fillStyle = "rgba(255,255,255,0.12)";
-        ctx.fillRect(offsetX, overlayY, barWidth, overlayHeight);
+        ctx.fillRect(0, overlayY, width, overlayHeight);
       }
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+
+      ctx.strokeStyle = "rgba(255,255,255,0.1)";
       ctx.lineWidth = 1;
       ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
       ctx.restore();
@@ -1197,7 +1315,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
           span.removeAttribute("title");
         }
       });
-      updateLegend(colors);
+      updateOverviewHeader(colors);
       drawOverview(spans, colors);
     }
 
