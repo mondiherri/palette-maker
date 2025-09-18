@@ -475,51 +475,48 @@ oklch(72% 0.12 340)
               <div>
                 <label for="previewFont">Sample font</label>
                 <select id="previewFont">
-                  <option value="system">System UI</option>
-                  <option value="humanist">Humanist Sans</option>
-                  <option value="serif">Serif</option>
-                  <option value="mono">Monospace</option>
-			<!-- Font options that should be added:
-"Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif
-Arial
-Arial Black
-Calibri
-Cambria
-Candara
-Comic Sans MS
-Consolas
-Constantia
-Corbel
-Courier New
-Dotum
-Ebrima
-Franklin Gothic Medium
-Gabriola
-Georgia
-Leelawadee
-Lucida Sans Unicode
-Malgun Gothic
-Microsoft Himalaya
-Microsoft JhengHei
-Microsoft New Tai Lue
-Microsoft PhagsPa
-Microsoft Sans Serif
-Microsoft Tai Le
-Microsoft YaHei
-Palatino Linotype
-Segoe Print
-Segoe UI
-Tahoma
-Times New Roman
-Trebuchet MS
-Verdana
--->
-					
+                  <option value="sourceSans">&quot;Source Sans Pro&quot;, &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif</option>
+                  <option value="arial">Arial</option>
+                  <option value="arialBlack">Arial Black</option>
+                  <option value="calibri">Calibri</option>
+                  <option value="cambria">Cambria</option>
+                  <option value="candara">Candara</option>
+                  <option value="comicSans">Comic Sans MS</option>
+                  <option value="consolas">Consolas</option>
+                  <option value="constantia">Constantia</option>
+                  <option value="corbel">Corbel</option>
+                  <option value="courierNew">Courier New</option>
+                  <option value="dotum">Dotum</option>
+                  <option value="ebrima">Ebrima</option>
+                  <option value="franklinGothicMedium">Franklin Gothic Medium</option>
+                  <option value="gabriola">Gabriola</option>
+                  <option value="georgia">Georgia</option>
+                  <option value="leelawadee">Leelawadee</option>
+                  <option value="lucidaSansUnicode">Lucida Sans Unicode</option>
+                  <option value="malgunGothic">Malgun Gothic</option>
+                  <option value="microsoftHimalaya">Microsoft Himalaya</option>
+                  <option value="microsoftJhengHei">Microsoft JhengHei</option>
+                  <option value="microsoftNewTaiLue">Microsoft New Tai Lue</option>
+                  <option value="microsoftPhagsPa">Microsoft PhagsPa</option>
+                  <option value="microsoftSansSerif">Microsoft Sans Serif</option>
+                  <option value="microsoftTaiLe">Microsoft Tai Le</option>
+                  <option value="microsoftYaHei">Microsoft YaHei</option>
+                  <option value="palatinoLinotype">Palatino Linotype</option>
+                  <option value="segoePrint">Segoe Print</option>
+                  <option value="segoeUI">Segoe UI</option>
+                  <option value="tahoma">Tahoma</option>
+                  <option value="timesNewRoman">Times New Roman</option>
+                  <option value="trebuchetMS">Trebuchet MS</option>
+                  <option value="verdana">Verdana</option>
                 </select>
               </div>
               <div>
                 <label for="previewFontSize">Font size (px)</label>
                 <input id="previewFontSize" type="number" min="10" max="24" step="1" value="13" />
+              </div>
+              <div>
+                <label for="previewLineHeight">Line spacing</label>
+                <input id="previewLineHeight" type="number" min="1" max="2.5" step="0.05" value="1.55" />
               </div>
             </div>
             <div>
@@ -667,6 +664,7 @@ Verdana
       highlightText: document.getElementById("highlightText"),
       previewFont: document.getElementById("previewFont"),
       previewFontSize: document.getElementById("previewFontSize"),
+      previewLineHeight: document.getElementById("previewLineHeight"),
       previewBackground: document.getElementById("previewBackground"),
       overviewCanvas: document.getElementById("overviewCanvas"),
       overviewHeader: document.getElementById("overviewHeader"),
@@ -719,15 +717,46 @@ Verdana
     // Persisted preview settings for the document highlight area.
     const PREVIEW_SETTINGS_KEY = "palette-maker:preview-settings";
     const PREVIEW_FONT_SIZE_RANGE = { min: 10, max: 24 };
+    const PREVIEW_LINE_HEIGHT_RANGE = { min: 1, max: 2.5 };
     const PREVIEW_FONTS = {
-      system: "system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", \"Liberation Sans\", sans-serif",
-      humanist: "\"Gill Sans\", \"Trebuchet MS\", \"Segoe UI\", sans-serif",
-      serif: "\"Iowan Old Style\", \"Palatino Linotype\", \"URW Palladio L\", P052, serif",
-      mono: "ui-monospace, SFMono-Regular, Menlo, Consolas, \"Liberation Mono\", monospace",
+      sourceSans: "\"Source Sans Pro\", \"Helvetica Neue\", Helvetica, Arial, sans-serif",
+      arial: "\"Arial\", sans-serif",
+      arialBlack: "\"Arial Black\", sans-serif",
+      calibri: "\"Calibri\", sans-serif",
+      cambria: "\"Cambria\", serif",
+      candara: "\"Candara\", sans-serif",
+      comicSans: "\"Comic Sans MS\", cursive",
+      consolas: "\"Consolas\", \"Courier New\", monospace",
+      constantia: "\"Constantia\", serif",
+      corbel: "\"Corbel\", sans-serif",
+      courierNew: "\"Courier New\", monospace",
+      dotum: "\"Dotum\", sans-serif",
+      ebrima: "\"Ebrima\", sans-serif",
+      franklinGothicMedium: "\"Franklin Gothic Medium\", sans-serif",
+      gabriola: "\"Gabriola\", cursive",
+      georgia: "\"Georgia\", serif",
+      leelawadee: "\"Leelawadee\", sans-serif",
+      lucidaSansUnicode: "\"Lucida Sans Unicode\", sans-serif",
+      malgunGothic: "\"Malgun Gothic\", sans-serif",
+      microsoftHimalaya: "\"Microsoft Himalaya\", serif",
+      microsoftJhengHei: "\"Microsoft JhengHei\", sans-serif",
+      microsoftNewTaiLue: "\"Microsoft New Tai Lue\", sans-serif",
+      microsoftPhagsPa: "\"Microsoft PhagsPa\", sans-serif",
+      microsoftSansSerif: "\"Microsoft Sans Serif\", sans-serif",
+      microsoftTaiLe: "\"Microsoft Tai Le\", sans-serif",
+      microsoftYaHei: "\"Microsoft YaHei\", sans-serif",
+      palatinoLinotype: "\"Palatino Linotype\", serif",
+      segoePrint: "\"Segoe Print\", cursive",
+      segoeUI: "\"Segoe UI\", sans-serif",
+      tahoma: "\"Tahoma\", sans-serif",
+      timesNewRoman: "\"Times New Roman\", serif",
+      trebuchetMS: "\"Trebuchet MS\", sans-serif",
+      verdana: "\"Verdana\", sans-serif",
     };
     const DEFAULT_PREVIEW_SETTINGS = {
-      font: "system",
+      font: "sourceSans",
       fontSize: 13,
+      lineHeight: 1.55,
       background: "#fdfdf9",
     };
 
@@ -743,6 +772,10 @@ Verdana
         const parsedSize = Number(raw.fontSize);
         if (Number.isFinite(parsedSize)) {
           normalized.fontSize = clamp(parsedSize, PREVIEW_FONT_SIZE_RANGE.min, PREVIEW_FONT_SIZE_RANGE.max);
+        }
+        const parsedLineHeight = Number(raw.lineHeight);
+        if (Number.isFinite(parsedLineHeight)) {
+          normalized.lineHeight = clamp(parsedLineHeight, PREVIEW_LINE_HEIGHT_RANGE.min, PREVIEW_LINE_HEIGHT_RANGE.max);
         }
         if (typeof raw.background === "string") {
           const trimmed = raw.background.trim();
@@ -777,13 +810,22 @@ Verdana
     function applyPreviewSettings() {
       if (!els.highlightText) return;
       const fontKey = previewSettings.font in PREVIEW_FONTS ? previewSettings.font : DEFAULT_PREVIEW_SETTINGS.font;
-      els.highlightText.style.fontFamily = PREVIEW_FONTS[fontKey];
+      const fontFamily = PREVIEW_FONTS[fontKey] || PREVIEW_FONTS[DEFAULT_PREVIEW_SETTINGS.font];
+      if (fontFamily) {
+        els.highlightText.style.fontFamily = fontFamily;
+      }
       const fontSize = clamp(
         Number(previewSettings.fontSize) || DEFAULT_PREVIEW_SETTINGS.fontSize,
         PREVIEW_FONT_SIZE_RANGE.min,
         PREVIEW_FONT_SIZE_RANGE.max,
       );
       els.highlightText.style.fontSize = `${fontSize}px`;
+      const lineHeight = clamp(
+        Number(previewSettings.lineHeight) || DEFAULT_PREVIEW_SETTINGS.lineHeight,
+        PREVIEW_LINE_HEIGHT_RANGE.min,
+        PREVIEW_LINE_HEIGHT_RANGE.max,
+      );
+      els.highlightText.style.lineHeight = String(lineHeight);
       const background = /^#[0-9a-f]{6}$/i.test(previewSettings.background)
         ? previewSettings.background
         : DEFAULT_PREVIEW_SETTINGS.background;
@@ -803,6 +845,15 @@ Verdana
           PREVIEW_FONT_SIZE_RANGE.max,
         );
         els.previewFontSize.value = String(fontSize);
+      }
+      if (els.previewLineHeight) {
+        const lineHeight = clamp(
+          Number(previewSettings.lineHeight) || DEFAULT_PREVIEW_SETTINGS.lineHeight,
+          PREVIEW_LINE_HEIGHT_RANGE.min,
+          PREVIEW_LINE_HEIGHT_RANGE.max,
+        );
+        const roundedLineHeight = Math.round(lineHeight * 100) / 100;
+        els.previewLineHeight.value = String(roundedLineHeight);
       }
       if (els.previewBackground) {
         const background = /^#[0-9a-f]{6}$/i.test(previewSettings.background)
@@ -1890,6 +1941,29 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         );
         event.target.value = String(normalized);
         updatePreviewSetting("fontSize", normalized);
+      });
+    }
+    if (els.previewLineHeight) {
+      const sanitizeLineHeight = (value) => {
+        const normalized = clamp(
+          Number.isFinite(value) ? value : DEFAULT_PREVIEW_SETTINGS.lineHeight,
+          PREVIEW_LINE_HEIGHT_RANGE.min,
+          PREVIEW_LINE_HEIGHT_RANGE.max,
+        );
+        return Math.round(normalized * 100) / 100;
+      };
+      els.previewLineHeight.addEventListener("input", (event) => {
+        const raw = Number(event.target.value);
+        if (!Number.isFinite(raw)) {
+          return;
+        }
+        updatePreviewSetting("lineHeight", sanitizeLineHeight(raw));
+      });
+      els.previewLineHeight.addEventListener("change", (event) => {
+        const raw = Number(event.target.value);
+        const sanitized = sanitizeLineHeight(raw);
+        event.target.value = String(sanitized);
+        updatePreviewSetting("lineHeight", sanitized);
       });
     }
     if (els.previewBackground) {
