@@ -740,13 +740,37 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
 `.trim().split(/\s+/);
     const punctuationMarks = [".", ".", ".", ".", "?", "!"];
 
+    let wordColorAssignments = new Map();
+    let unassignedWordColorIndices = [];
+
+    function normalizeHighlightWord(word) {
+      return (word || "").toLowerCase();
+    }
+
+    function resetWordColorAssignments(colorIndices) {
+      wordColorAssignments = new Map();
+      unassignedWordColorIndices = colorIndices.length ? shuffleInPlace([...colorIndices]) : [];
+    }
+
+    function getColorIndexForWord(word) {
+      const key = normalizeHighlightWord(word);
+      if (wordColorAssignments.has(key)) {
+        return { index: wordColorAssignments.get(key), key };
+      }
+      if (!unassignedWordColorIndices.length) {
+        return null;
+      }
+      const nextIndex = unassignedWordColorIndices.pop();
+      wordColorAssignments.set(key, nextIndex);
+      return { index: nextIndex, key };
+    }
+
     function capitalizeWord(word) {
       if (!word) return word;
       return word.charAt(0).toUpperCase() + word.slice(1);
     }
 
-    function createRandomParagraph(colorIndices) {
-      const paletteChoices = colorIndices.length ? colorIndices : [0];
+    function createRandomParagraph() {
       const words = [];
       const wordCount = randomInt(9, 12);
       for (let i = 0; i < wordCount; i++) {
@@ -762,12 +786,17 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       let createdHighlights = 0;
       for (let i = 0; i < wordCount; i++) {
         if (highlighted.has(i)) {
-          const span = document.createElement("span");
-          const colorIndex = paletteChoices[randomInt(0, paletteChoices.length - 1)];
-          span.dataset.colorIndex = String(colorIndex);
-          span.textContent = words[i];
-          p.appendChild(span);
-          createdHighlights += 1;
+          const assignment = getColorIndexForWord(words[i]);
+          if (assignment) {
+            const span = document.createElement("span");
+            span.dataset.colorIndex = String(assignment.index);
+            span.dataset.wordKey = assignment.key;
+            span.textContent = words[i];
+            p.appendChild(span);
+            createdHighlights += 1;
+          } else {
+            p.appendChild(document.createTextNode(words[i]));
+          }
         } else {
           p.appendChild(document.createTextNode(words[i]));
         }
@@ -786,7 +815,8 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       const availableColors = Math.min(palette.length, getTargetSize());
       const colorIndices = availableColors > 0
         ? Array.from({ length: availableColors }, (_, i) => i)
-        : [0];
+        : [];
+      resetWordColorAssignments(colorIndices);
       const styles = window.getComputedStyle(container);
       let lineHeight = parseFloat(styles.lineHeight);
       if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
@@ -800,12 +830,12 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       const fragment = document.createDocumentFragment();
       let highlightTotal = 0;
       for (let i = 0; i < paragraphCount; i++) {
-        const { element, highlightCount } = createRandomParagraph(colorIndices);
+        const { element, highlightCount } = createRandomParagraph();
         fragment.appendChild(element);
         highlightTotal += highlightCount;
       }
       while (highlightTotal < availableColors) {
-        const { element, highlightCount } = createRandomParagraph(colorIndices);
+        const { element, highlightCount } = createRandomParagraph();
         fragment.appendChild(element);
         highlightTotal += highlightCount;
       }
@@ -813,21 +843,6 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       container.appendChild(fragment);
       container.scrollTop = 0;
       updateTextPreview();
-    }
-
-    function redistributeHighlightAssignments(spans, colorCount) {
-      if (!colorCount || !spans.length) return;
-      const assignments = [];
-      for (let i = 0; i < colorCount && assignments.length < spans.length; i++) {
-        assignments.push(i);
-      }
-      while (assignments.length < spans.length) {
-        assignments.push(randomInt(0, colorCount - 1));
-      }
-      shuffleInPlace(assignments);
-      spans.forEach((span, index) => {
-        span.dataset.colorIndex = String(assignments[index]);
-      });
     }
 
     function toDisplayColor(color) {
@@ -939,7 +954,38 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         return;
       }
       if (colors.length) {
-        redistributeHighlightAssignments(spans, colors.length);
+        const assignments = new Map();
+        const usedIndices = new Set();
+        let needsRefresh = false;
+        for (const span of spans) {
+          const raw = Number(span.dataset.colorIndex);
+          if (!Number.isFinite(raw) || raw < 0 || raw >= colors.length) {
+            needsRefresh = true;
+            break;
+          }
+          const wordKey = span.dataset.wordKey || normalizeHighlightWord(span.textContent || "");
+          if (assignments.has(wordKey)) {
+            if (assignments.get(wordKey) !== raw) {
+              needsRefresh = true;
+              break;
+            }
+          } else {
+            if (usedIndices.has(raw)) {
+              needsRefresh = true;
+              break;
+            }
+            assignments.set(wordKey, raw);
+            usedIndices.add(raw);
+          }
+        }
+        if (needsRefresh) {
+          randomizePreviewText();
+          return;
+        }
+        wordColorAssignments = assignments;
+      } else {
+        wordColorAssignments = new Map();
+        unassignedWordColorIndices = [];
       }
       spans.forEach(span => {
         const raw = Number(span.dataset.colorIndex);
