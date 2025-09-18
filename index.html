@@ -19,8 +19,12 @@
     }
     h1 { font-size: 18px; margin: 0 0 12px; }
     .app {
-      display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 20px;
-      align-items: stretch; flex: 1 1 auto; min-height: 0;
+      display: grid; 
+		grid-template-columns: 420px minmax(0, 1fr); 
+		gap: 10px;
+      align-items: stretch; 
+		flex: 1 1 auto; 
+		min-height: 0;
     }
     .card {
       	background: var(--panel); 
@@ -1628,7 +1632,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
           span.classList.remove("inactive");
           const srgbClone = color.clone();
           srgbClone.toGamut({ space: "srgb" });
-          span.title = `${fmtOKLCH(color)} | ${srgbClone.toString({ format: "hex" })}`;
+          span.title = `${indexToLabel(raw)} | ${fmtOKLCH(color)} | ${srgbClone.toString({ format: "hex" })}`;
         } else {
           span.style.backgroundColor = "";
           span.style.color = "";
@@ -2061,5 +2065,6 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
