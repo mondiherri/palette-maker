@@ -164,7 +164,7 @@
     .sample-text p { margin: 0 0 10px; }
     .sample-text p:last-child { margin-bottom: 0; }
     .sample-text span[data-color-index] {
-      border-radius: 6px; padding: 1px 4px; margin: 0 1px; transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
+      border-radius: 2px; padding: 1px 4px; margin: 0 1px; transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.4);
     }
     .sample-text span[data-color-index].inactive {
@@ -173,7 +173,7 @@
     .overview-wrap {
       flex: 1 1 auto;
       min-height: 0;
-      border-radius: 8px;
+      border-radius: 0px;
       overflow-x: auto;
       overflow-y: hidden;
     }
@@ -181,16 +181,16 @@
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     label { font-weight: 600; font-size: 12px; color: #333; display: block; margin-bottom: 6px; }
     input[type="text"], input[type="number"], textarea, select {
-      width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; background: #fff; font: inherit;
+      width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #ddd; background: #fff; font: inherit;
     }
     input[type="color"] {
       width: 100%; height: 36px; padding: 0; border-radius: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer;
     }
     input[type="color"]::-webkit-color-swatch {
-      border: none; border-radius: 8px;
+      border: none; border-radius: 4px;
     }
     input[type="color"]::-moz-color-swatch {
-      border: none; border-radius: 8px;
+      border: none; border-radius: 4px;
     }
     textarea { resize: vertical; min-height: 84px; }
     .controls { display: grid; gap: 12px; }
@@ -205,7 +205,7 @@
     #grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
     .grid.single-column { grid-template-columns: 1fr; }
     .swatch {
-      min-height: 76px; border-radius: 12px; display: flex; flex-direction: column; justify-content: flex-start;
+      min-height: 76px; border-radius: 2px; display: flex; flex-direction: column; justify-content: flex-start;
       gap: 8px; padding: 10px; border: 1px solid rgba(0,0,0,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
     }
     .swatch-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -235,7 +235,7 @@
     }
     .swatch .tag { font-size: 11px; font-weight: 700; opacity: .85; }
     .swatch-controls {
-      display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px;
+      display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 0px;
       background: rgba(255,255,255,0.18); border: 1px solid rgba(0,0,0,0.08);
     }
     .swatch-controls input[type="range"] {
@@ -2069,6 +2069,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
