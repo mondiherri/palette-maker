@@ -1635,7 +1635,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
           const ok = display.to("oklch");
           span.style.backgroundColor = colorToCss(display);
           span.style.color = textColorFor(ok);
-          span.style.boxShadow = "0 0 0 1px rgba(0,0,0,0.12)";
+          
           span.classList.remove("inactive");
           const srgbClone = color.clone();
           srgbClone.toGamut({ space: "srgb" });
@@ -2072,6 +2072,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
