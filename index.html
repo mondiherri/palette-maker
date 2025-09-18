@@ -1317,6 +1317,9 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       const canvas = els.overviewCanvas;
       const container = els.highlightText;
       const colorCount = colors.length;
+      const styles = getComputedStyle(container);
+      const padTop = Number.parseFloat(styles.paddingTop) || 0;
+      const padBottom = Number.parseFloat(styles.paddingBottom) || 0;
 
       if (colorCount > 0) {
         const desiredCssWidth = Math.max(1, Math.round(getOverviewTotalWidth(colorCount)));
@@ -1362,7 +1365,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         w: OVERVIEW_RECT_WIDTH,
       }));
 
-      const contentHeight = container.scrollHeight || 1;
+      const contentHeight = Math.max(1, (container.scrollHeight || 0) - padTop - padBottom);
       const viewportHeight = container.clientHeight || 1;
 
       lanes.forEach(lane => {
@@ -1379,7 +1382,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         if (!color) return;
         const display = toDisplayColor(color);
         const fill = colorToCss(display);
-        const start = span.offsetTop;
+        const start = Math.max(0, span.offsetTop - padTop);
         const end = start + span.offsetHeight;
         const center = start + (end - start) / 2;
         const scaledCenter = (center / contentHeight) * height;
