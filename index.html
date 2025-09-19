@@ -106,9 +106,13 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      height: 100%;
-      min-height: 0;
       align-items: stretch;
+      flex: 0 0 240px;
+      width: 240px;
+      min-width: 200px;
+      position: sticky;
+      top: 24px;
+      align-self: flex-start;
     }
     .overview-header {
       --lane-count: 1;
@@ -149,8 +153,11 @@
       color: #111;
     }
     .highlight-body {
-      display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, max-content); gap: 12px; align-items: stretch;
-      flex: 1 1 auto; height: 100%; min-height: 0;
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      height: 100%;
+      min-height: 0;
     }
     .sample-text {
       background: #fdfdf9; 
@@ -341,13 +348,21 @@
       .highlight-body {
         height: auto;
       }
+      .overview-panel {
+        position: static;
+        top: auto;
+        width: auto;
+        min-width: 0;
+        flex: 1 1 auto;
+        align-self: stretch;
+      }
       .panel-resizer {
         display: none;
       }
     }
     @media (max-width: 1000px) { .app { grid-template-columns: 1fr; } .grid { grid-template-columns: repeat(4, 1fr); } }
     @media (max-width: 900px) {
-      .highlight-body { grid-template-columns: 1fr; }
+      .highlight-body { min-height: 0; }
       .sample-text { height: 280px; }
       .overview-wrap { height: 280px; }
     }
@@ -628,14 +643,14 @@ oklch(72% 0.12 340)
             <span data-color-index="20">calibration stage</span> verifies the <span data-color-index="21">quantized outputs</span>
             under varying <span data-color-index="22">production conditions</span>.
           </p>
-        </div>
-          <!-- Highlight coverage mini-map -->
-          <div id="overviewPanel" class="overview-panel" aria-label="Highlight overview">
-            <div id="overviewHeader" class="overview-header" aria-live="polite" aria-label="Palette lanes overview"></div>
-            <div class="overview-wrap">
-              <canvas id="overviewCanvas" width="96" height="720" role="img" aria-label="Highlight overview"></canvas>
-            </div>
           </div>
+        </div>
+      </div>
+      <!-- Highlight coverage mini-map -->
+      <div id="overviewPanel" class="card overview-panel" aria-label="Highlight overview">
+        <div id="overviewHeader" class="overview-header" aria-live="polite" aria-label="Palette lanes overview"></div>
+        <div class="overview-wrap">
+          <canvas id="overviewCanvas" width="96" height="720" role="img" aria-label="Highlight overview"></canvas>
         </div>
       </div>
   </div>
@@ -696,6 +711,7 @@ oklch(72% 0.12 340)
       previewBackground: document.getElementById("previewBackground"),
       overviewCanvas: document.getElementById("overviewCanvas"),
       overviewHeader: document.getElementById("overviewHeader"),
+      overviewPanel: document.getElementById("overviewPanel"),
       palettePanel: document.getElementById("palettePanel"),
       highlightPanel: document.getElementById("highlightPanel"),
       panelResizer: document.getElementById("panelResizer"),
@@ -908,12 +924,14 @@ oklch(72% 0.12 340)
       const resizer = els.panelResizer;
       const palettePanel = els.palettePanel;
       const highlightPanel = els.highlightPanel;
+      const overviewPanel = els.overviewPanel;
       const container = els.rightPanels;
       if (!resizer || !palettePanel || !highlightPanel || !container) return;
 
       const STORAGE_KEY = "palette-maker:palette-width";
       const MIN_PALETTE = 260;
       const MIN_PREVIEW = 260;
+      const MIN_OVERVIEW = 200;
       let savedWidth = null;
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
@@ -933,8 +951,26 @@ oklch(72% 0.12 340)
         const gap = parseFloat(styles.columnGap || styles.gap || "0") || 0;
         const containerWidth = container.getBoundingClientRect().width;
         const resizerWidth = resizer.offsetWidth || parseFloat(getComputedStyle(resizer).width) || 0;
-        const maxPalette = containerWidth - (MIN_PREVIEW + resizerWidth + gap * 2);
-        return { isRow, gap, containerWidth, resizerWidth, maxPalette };
+        let overviewWidth = 0;
+        if (overviewPanel) {
+          const computed = getComputedStyle(overviewPanel);
+          if (computed.display !== "none") {
+            const rect = overviewPanel.getBoundingClientRect();
+            const basis = parseFloat(computed.flexBasis);
+            const minWidth = parseFloat(computed.minWidth);
+            overviewWidth = rect.width;
+            if (!Number.isFinite(overviewWidth) || overviewWidth <= 0) {
+              overviewWidth = Number.isFinite(basis) ? basis : 0;
+            }
+            if (Number.isFinite(minWidth)) {
+              overviewWidth = Math.max(overviewWidth, minWidth);
+            }
+            overviewWidth = Math.max(overviewWidth, MIN_OVERVIEW);
+          }
+        }
+        const gapCount = overviewWidth > 0 ? 3 : 2;
+        const maxPalette = containerWidth - (MIN_PREVIEW + overviewWidth + resizerWidth + gap * gapCount);
+        return { isRow, gap, containerWidth, resizerWidth, overviewWidth, maxPalette };
       };
 
       const updateAria = (width, metrics) => {
@@ -1418,8 +1454,12 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         fragment.appendChild(element);
         highlightTotal += highlightCount;
       }
-      container.innerHTML = "";
-      container.appendChild(fragment);
+      if (typeof container.replaceChildren === "function") {
+        container.replaceChildren(fragment);
+      } else {
+        container.innerHTML = "";
+        container.appendChild(fragment);
+      }
       container.scrollTop = 0;
       updateTextPreview();
     }
