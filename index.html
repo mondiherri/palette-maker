@@ -227,8 +227,32 @@
     .swatch {
       min-height: 76px; border-radius: 2px; display: flex; flex-direction: column; justify-content: flex-start;
       gap: 8px; padding: 10px; border: 1px solid rgba(0,0,0,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
+      position: relative;
     }
     .swatch-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .swatch-title { display: flex; align-items: flex-start; gap: 8px; }
+    .swatch-reorder { display: flex; flex-direction: column; gap: 3px; }
+    .swatch-reorder button {
+      border-radius: 4px;
+      padding: 0;
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+      border: 1px solid rgba(0,0,0,0.25);
+      background: rgba(255,255,255,0.85);
+      color: #111;
+    }
+    .swatch-reorder button:hover { background: rgba(255,255,255,0.95); }
+    .swatch-reorder button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    .swatch-reorder button:disabled { opacity: .45; cursor: not-allowed; }
     .swatch .meta { font-size: 11px; opacity: .9; display: grid; gap: 2px; }
     .swatch .meta div {
       display: flex;
@@ -755,6 +779,7 @@ oklch(72% 0.12 340)
 
     // Active palette colors and math helpers
     let palette = [];
+    let pendingReorderFocus = null;
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
     const OVERVIEW_RECT_WIDTH = 22;
     const OVERVIEW_RECT_HEIGHT = 6;
@@ -1292,6 +1317,17 @@ oklch(72% 0.12 340)
       return container;
     }
 
+    function movePaletteColor(fromIndex, toIndex, focusDirection) {
+      if (fromIndex === toIndex) return;
+      if (toIndex < 0 || toIndex >= palette.length) return;
+      const [color] = palette.splice(fromIndex, 1);
+      palette.splice(toIndex, 0, color);
+      pendingReorderFocus = typeof focusDirection === "string"
+        ? { index: toIndex, direction: focusDirection }
+        : null;
+      render();
+    }
+
     // Create the DOM for a palette swatch including controls.
     function createSwatchElement(color, index) {
       const swatch = document.createElement("div");
@@ -1301,14 +1337,48 @@ oklch(72% 0.12 340)
       const header = document.createElement("div");
       header.className = "swatch-header";
 
+      const titleWrap = document.createElement("div");
+      titleWrap.className = "swatch-title";
+
+      const reorder = document.createElement("div");
+      reorder.className = "swatch-reorder";
+
+      const swatchLabel = String(index + 1).padStart(2, "0");
+
+      const upButton = document.createElement("button");
+      upButton.type = "button";
+      upButton.textContent = "^";
+      upButton.setAttribute("aria-label", `Move color ${swatchLabel} up`);
+      upButton.title = `Move color ${swatchLabel} up`;
+      upButton.disabled = index === 0;
+      upButton.dataset.reorder = "up";
+      upButton.addEventListener("click", () => {
+        movePaletteColor(index, index - 1, "up");
+      });
+
+      const downButton = document.createElement("button");
+      downButton.type = "button";
+      downButton.textContent = "v";
+      downButton.setAttribute("aria-label", `Move color ${swatchLabel} down`);
+      downButton.title = `Move color ${swatchLabel} down`;
+      downButton.disabled = index >= palette.length - 1;
+      downButton.dataset.reorder = "down";
+      downButton.addEventListener("click", () => {
+        movePaletteColor(index, index + 1, "down");
+      });
+
+      reorder.append(upButton, downButton);
+
       const tag = document.createElement("div");
       tag.className = "tag";
-      tag.textContent = String(index + 1).padStart(2, "0");
+      tag.textContent = swatchLabel;
+
+      titleWrap.append(reorder, tag);
 
       const meta = document.createElement("div");
       meta.className = "meta monospace";
 
-      header.append(tag, meta);
+      header.append(titleWrap, meta);
       swatch.appendChild(header);
 
       const controls = createSwatchControls(index, color, swatch, meta);
@@ -2108,6 +2178,24 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         const swatchEl = createSwatchElement(col, i);
         els.grid.appendChild(swatchEl);
       });
+      if (pendingReorderFocus) {
+        const { index, direction } = pendingReorderFocus;
+        const swatch = els.grid.querySelector(`.swatch[data-index="${index}"]`);
+        if (swatch) {
+          let target = swatch.querySelector(`button[data-reorder="${direction}"]`);
+          if (target && target.disabled) {
+            const fallbackDir = direction === "up" ? "down" : "up";
+            const fallback = swatch.querySelector(`button[data-reorder="${fallbackDir}"]`);
+            if (fallback && !fallback.disabled) {
+              target = fallback;
+            }
+          }
+          if (target && !target.disabled) {
+            target.focus();
+          }
+        }
+        pendingReorderFocus = null;
+      }
       updatePaletteOutputs();
     }
 
