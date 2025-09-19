@@ -180,7 +180,12 @@
       overflow-x: auto;
       overflow-y: hidden;
     }
-    .overview-wrap canvas { width: 100%; height: 100%; display: block; }
+    .overview-wrap canvas { 
+		width: 100%; 
+		height: 100%; 
+		display: block; 
+      image-rendering: pixelated;
+    }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     label { font-weight: 600; font-size: 12px; color: #333; display: block; margin-bottom: 6px; }
     input[type="text"], input[type="number"], textarea, select {
@@ -2072,6 +2077,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
