@@ -1389,6 +1389,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
     // Refill the preview area with randomized paragraphs and highlights.
     function randomizePreviewText() {
       if (!els.highlightText) return;
+	  els.highlightText = "";
       const container = els.highlightText;
       const availableColors = Math.min(palette.length, getTargetSize());
       const colorIndices = availableColors > 0
@@ -2078,6 +2079,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
