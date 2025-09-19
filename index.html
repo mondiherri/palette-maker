@@ -1425,6 +1425,9 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
 
     let wordColorAssignments = new Map();
     let unassignedWordColorIndices = [];
+    // Character ranges of highlighted words grouped by palette lane.
+    let highlightCharRangesByLane = new Map();
+    let highlightCharTotalLength = 0;
 
     // Normalize words for stable highlight assignments.
     function normalizeHighlightWord(word) {
@@ -1435,6 +1438,58 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
     function resetWordColorAssignments(colorIndices) {
       wordColorAssignments = new Map();
       unassignedWordColorIndices = colorIndices.length ? shuffleInPlace([...colorIndices]) : [];
+    }
+
+    // Map each highlight span to its character offsets so the overview can scale positions.
+    function collectHighlightCharRanges(container, spans, colorCount) {
+      const rangesByLane = new Map();
+      let totalLength = 0;
+      if (!container || !spans.length || colorCount <= 0) {
+        highlightCharRangesByLane = rangesByLane;
+        highlightCharTotalLength = totalLength;
+        return { rangesByLane, totalLength };
+      }
+      const trackedSpans = new Set(spans);
+      const activeEntries = new Map();
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      while (node) {
+        const text = node.textContent || "";
+        const len = text.length;
+        if (len > 0) {
+          const element = node.parentElement?.closest?.("[data-color-index]");
+          if (element && trackedSpans.has(element)) {
+            const raw = Number(element.dataset.colorIndex);
+            if (Number.isFinite(raw) && raw >= 0 && raw < colorCount) {
+              let laneRanges = rangesByLane.get(raw);
+              if (!laneRanges) {
+                laneRanges = [];
+                rangesByLane.set(raw, laneRanges);
+              }
+              let entry = activeEntries.get(element);
+              const spanStart = totalLength;
+              const spanEnd = spanStart + len;
+              if (!entry) {
+                entry = {
+                  start: spanStart,
+                  end: spanEnd,
+                  element,
+                  wordKey: element.dataset.wordKey || normalizeHighlightWord(element.textContent || ""),
+                };
+                laneRanges.push(entry);
+                activeEntries.set(element, entry);
+              } else {
+                entry.end = spanEnd;
+              }
+            }
+          }
+        }
+        totalLength += len;
+        node = walker.nextNode();
+      }
+      highlightCharRangesByLane = rangesByLane;
+      highlightCharTotalLength = totalLength;
+      return { rangesByLane, totalLength };
     }
 
     // Retrieve or assign a palette slot for a specific word.
@@ -1674,22 +1729,22 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         ctx.fillRect(lane.x, 0, lane.w, height);
       });
 
-      spans.forEach(span => {
-        const raw = Number(span.dataset.colorIndex);
-        if (!Number.isFinite(raw) || raw < 0 || raw >= colorCount) return;
-        const lane = lanes[raw];
-        if (!lane) return;
-        const color = colors[raw];
-        if (!color) return;
+      const { rangesByLane, totalLength } = collectHighlightCharRanges(container, spans, colorCount);
+      const totalChars = Math.max(1, totalLength);
+      const maxRectY = Math.max(0, height - OVERVIEW_RECT_HEIGHT);
+
+      rangesByLane.forEach((ranges, laneIndex) => {
+        const lane = lanes[laneIndex];
+        const color = colors[laneIndex];
+        if (!lane || !color || !ranges.length) return;
         const display = toDisplayColor(color);
         const fill = colorToCss(display);
-        const start = Math.max(0, span.offsetTop - padTop);
-        const end = start + span.offsetHeight;
-        const center = start + (end - start) / 2;
-        const scaledCenter = (center / contentHeight) * height;
-        const rectY = clamp(scaledCenter - (OVERVIEW_RECT_HEIGHT / 2), 0, Math.max(0, height - OVERVIEW_RECT_HEIGHT));
         ctx.fillStyle = fill;
-        ctx.fillRect(lane.x, rectY, lane.w, OVERVIEW_RECT_HEIGHT);
+        ranges.forEach(range => {
+          const startRatio = range.start / totalChars;
+          const rectY = clamp(startRatio * height, 0, maxRectY);
+          ctx.fillRect(lane.x, rectY, lane.w, OVERVIEW_RECT_HEIGHT);
+        });
       });
 
       if (viewportHeight < contentHeight) {
