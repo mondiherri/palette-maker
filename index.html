@@ -8,17 +8,29 @@
     :root { --bg: #fafaf8; --panel: #ffffff; --muted: #666; --accent: #0b84f3; --border:#e8e8e3; }
     * { box-sizing: border-box; }
     body {
-      margin: 0; padding: 24px; background: var(--bg); color: #111;
+      margin: 0; 
+		padding: 24px; 
+		background: var(--bg); 
+		color: #111;
       font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-      min-height: 100vh; display: flex; flex-direction: column;
+      min-height: 100vh; 
+		display: flex; 
+		flex-direction: column;
     }
     h1 { font-size: 18px; margin: 0 0 12px; }
     .app {
-      display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 20px;
-      align-items: stretch; flex: 1 1 auto; min-height: 0;
+      display: grid; 
+		grid-template-columns: 420px minmax(0, 1fr); gap: 20px;
+      align-items: stretch; 
+		flex: 1 1 auto; 
+		min-height: 0;
     }
     .card {
-      background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 1px 0 rgba(0,0,0,.04);
+      background: var(--panel); 
+		border: 1px solid var(--border); 
+		border-radius: 14px; 
+		padding: 14px; 
+		box-shadow: 0 1px 0 rgba(0,0,0,.04);
     }
     .right-panels {
       display: flex;
@@ -84,7 +96,7 @@
     }
     .overview-panel {
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 2px;
       background: #1f1f1f;
       padding: 10px;
       display: flex;
@@ -122,13 +134,13 @@
     }
     .overview-chip {
       aspect-ratio: 1;
-      border-radius: 6px;
+      border-radius:  0px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 12px;
       font-weight: 700;
-      box-shadow: 0 1px 2px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.18);
+      /* box-shadow: 0 1px 2px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.18); */
       color: #111;
     }
     .highlight-body {
@@ -136,14 +148,19 @@
       flex: 1 1 auto; height: 100%; min-height: 0;
     }
     .sample-text {
-      background: #fdfdf9; border: 1px solid var(--border); border-radius: 12px; padding: 12px; line-height: 1.55;
+      background: #fdfdf9; 
+      border: 1px solid var(--border); 
+      border-radius: 2px; 
+      padding: 12px; line-height: 1.55;
       color: #2a2a2a; box-shadow: inset 0 1px 0 rgba(255,255,255,.6); height: 100%; overflow-y: auto; position: relative;
       font-size: 13px;
     }
     .sample-text p { margin: 0 0 10px; }
     .sample-text p:last-child { margin-bottom: 0; }
     .sample-text span[data-color-index] {
-      border-radius: 6px; padding: 1px 4px; margin: 0 1px; transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
+      border-radius: 0px; 
+      padding: 1px 4px; margin: 0 1px; 
+      transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.4);
     }
     .sample-text span[data-color-index].inactive {
@@ -152,14 +169,18 @@
     .overview-wrap {
       flex: 1 1 auto;
       min-height: 0;
-      border-radius: 8px;
+      border-radius: 0px;
       overflow: hidden;
     }
     .overview-wrap canvas { width: 100%; height: 708px; display: block; image-rendering: pixelated;}
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     label { font-weight: 600; font-size: 12px; color: #333; display: block; margin-bottom: 6px; }
     input[type="text"], input[type="number"], textarea, select {
-      width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; background: #fff; font: inherit;
+      width: 100%; 
+      padding: 8px 10px; 
+      border-radius: 6px; 
+      border: 1px solid #ddd; background: #fff; 
+      font: inherit;
     }
     textarea { resize: vertical; min-height: 84px; }
     .controls { display: grid; gap: 12px; }
@@ -174,14 +195,14 @@
     #grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
     .grid.single-column { grid-template-columns: 1fr; }
     .swatch {
-      min-height: 76px; border-radius: 12px; display: flex; flex-direction: column; justify-content: flex-start;
-      gap: 8px; padding: 10px; border: 1px solid rgba(0,0,0,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
+      min-height: 76px; border-radius: 2px; display: flex; flex-direction: column; justify-content: flex-start;
+      gap: 4px; padding: 6px; border: 1px solid rgba(0,0,0,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
     }
     .swatch-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
     .swatch .meta { font-size: 11px; opacity: .9; }
     .swatch .tag { font-size: 11px; font-weight: 700; opacity: .85; }
     .swatch-controls {
-      display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px;
+      display: flex; flex-direction: column; gap: 6px; padding: 4px; border-radius: 0px;
       background: rgba(255,255,255,0.18); border: 1px solid rgba(0,0,0,0.08);
     }
     .swatch-controls input[type="range"] {
