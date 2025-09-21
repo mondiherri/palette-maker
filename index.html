@@ -804,7 +804,7 @@ oklch(72% 0.12 340)
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
     const OVERVIEW_RECT_WIDTH = 22;
     const OVERVIEW_RECT_HEIGHT = 6;
-    const OVERVIEW_LANE_GAP = 6;
+    const OVERVIEW_LANE_GAP = 2;
     const getOverviewTotalWidth = (count) => count > 0
       ? (count * OVERVIEW_RECT_WIDTH) + ((count - 1) * OVERVIEW_LANE_GAP)
       : 0;
@@ -2288,6 +2288,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
