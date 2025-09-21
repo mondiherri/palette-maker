@@ -29,6 +29,7 @@
       align-items: stretch; 
 		flex: 1 1 auto; 
 		min-height: 0;
+		margin-bottom: -50px; /* opposite of footer buffer! */
     }
     .card {
       	background: var(--panel); 
@@ -363,6 +364,15 @@
 
     /* Export footer */
     .export { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+
+	.global-footer, .footer-buffer {
+    	height: 50px; 
+	}
+
+	.global-footer {
+    	background: pink;
+	}
+
 
     @media (max-width: 1200px) {
       .right-panels {
@@ -2275,6 +2285,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
