@@ -3,10 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>OKLCH Palette Lab</title>
+  <title>OKLCH Palette Generator</title>
   <style>
     :root { --bg: #fafaf8; --panel: #ffffff; --muted: #666; --accent: #0b84f3; --border:#e8e8e3; }
-    * { box-sizing: border-box; }
+    *, *:before, *:after {
+		-moz-box-sizing: border-box; -webkit-box-sizing: border-box; box-sizing: border-box;
+	}
+    html { height: 100%; }
     body {
       margin: 0; 
 		padding: 24px; 
@@ -399,7 +402,7 @@
   </style>
 </head>
 <body>
-  <h1>OKLCH Palette Lab</h1>
+  <h1>OKLCH Palette Generator</h1>
   <div class="app">
     <!-- LEFT: Controls -->
     <div class="card">
@@ -2267,6 +2270,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
