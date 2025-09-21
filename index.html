@@ -228,7 +228,7 @@
 
     .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
     #grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-    .grid.single-column { grid-template-columns: 1fr; }
+    .grid.single-column { display: inline; grid-template-columns: 1fr; }
     .swatch {
       min-height: 76px; border-radius: 2px; display: flex; flex-direction: column; justify-content: flex-start;
       gap: 8px; padding: 10px; border: 1px solid rgba(0,0,0,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
@@ -2287,6 +2287,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
