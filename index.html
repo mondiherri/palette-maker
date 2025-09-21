@@ -1590,7 +1590,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
       }
       const containerHeight = container.clientHeight || 708;
       const baseParagraphCount = Math.max(12, Math.ceil(containerHeight / lineHeight) + 6);
-      const minParagraphsForColors = availableColors > 0 ? Math.ceil(availableColors / 3) : 0;
+      const minParagraphsForColors = availableColors > 0 ? Math.ceil(availableColors / 2) : 0;
       const paragraphCount = Math.max(baseParagraphCount, minParagraphsForColors);
       const fragment = document.createDocumentFragment();
       let highlightTotal = 0;
@@ -2287,6 +2287,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
