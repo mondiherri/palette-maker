@@ -1363,7 +1363,7 @@ oklch(72% 0.12 340)
       const reorder = document.createElement("div");
       reorder.className = "swatch-reorder";
 
-      const swatchLabel = `$indexToLabel(i) | $String(index + 1).padStart(2, "0")`;
+      const swatchLabel = `${indexToLabel(index)} - ${String(index + 1)}`;
 
       const upButton = document.createElement("button");
       upButton.type = "button";
@@ -2288,6 +2288,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
