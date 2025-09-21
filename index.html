@@ -496,7 +496,7 @@
           <div class="tablist" role="tablist" aria-label="Palette generators">
             <button id="tabBasic" class="tab" role="tab" aria-selected="true" aria-controls="panelBasic">Generate all / Random / Step</button>
             <button id="tabDirectional" class="tab" role="tab" aria-selected="false" aria-controls="panelDirectional">Directional</button>
-            <button id="tabSettings" class="tab" role="tab" aria-selected="false" aria-controls="panelSettings">Settings</button>
+            <button id="tabSettings" class="tab" role="tab" aria-selected="false" aria-controls="panelSettings">Text Preview Settings</button>
           </div>
 
           <!-- Generate / Step -->
@@ -521,26 +521,26 @@ oklch(72% 0.12 340)
 
 			</section>
           <!-- Directional -->
-          <section id="panelDirectional" class="tabpanel" role="tabpanel" aria-labelledby="tabDirectional">
-            <div>
+           <section id="panelDirectional" class="tabpanel" role="tabpanel" aria-labelledby="tabDirectional">
+            <div id="dirPreview" class="dir-preview" aria-label="Selected direction preview"></div>
+			<div>
+                <label>Direction window (± degrees)</label>
+                <input id="hueWindow" type="number" min="1" max="180" step="1" value="15" />
+                <div class="note">Sector = [center−window, center+window], intersected with the excluded hue rule.</div>
+            </div>
+			<div>
               <label for="hueSlider">Directional hue (0–360° OKLCH)</label>
               <div class="hue-slider-wrap">
                 <input id="hueSlider" class="hue-slider" type="range" min="0" max="360" step="1" value="200" />
               </div>
             </div>
-
-            <div class="row" style="margin-top:8px">
-              <div>
-                <label>Direction window (± degrees)</label>
-                <input id="hueWindow" type="number" min="1" max="180" step="1" value="15" />
-                <div class="note">Sector = [center−window, center+window], intersected with the excluded hue rule.</div>
-              </div>
-              <div class="range-row">
+			
+			<div class="range-row">
                 <label>Directional Lightness (L)</label>
                 <div class="note" id="dirLReadout">60%</div>
                 <input id="dirL" type="range" min="0" max="100" step="1" value="60" />
-              </div>
             </div>
+			
 
             <div class="range-row">
               <label>Directional Chroma (C)</label>
@@ -548,13 +548,12 @@ oklch(72% 0.12 340)
               <input id="dirC" type="range" min="0" max="0.4" step="0.001" value="0.12" />
             </div>
 
-            <div id="dirPreview" class="dir-preview" aria-label="Selected direction preview"></div>
-
             <div class="btnbar" style="margin-top:8px">
               <button id="btnAddNextDirectional">Add next like Hue</button>
                           <div class="note">Respects Min Δ in OkLAB color space</div>
             </div>
           </section>
+			
           <!-- Settings -->
           <section id="panelSettings" class="tabpanel" role="tabpanel" aria-labelledby="tabSettings">
             <div class="row">
@@ -2288,6 +2287,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
