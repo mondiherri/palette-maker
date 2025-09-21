@@ -1368,7 +1368,7 @@ oklch(72% 0.12 340)
 
       const upButton = document.createElement("button");
       upButton.type = "button";
-      upButton.textContent = "^";
+      upButton.textContent = "˄";
       upButton.setAttribute("aria-label", `Move color ${swatchLabel} up`);
       upButton.title = `Move color ${swatchLabel} up`;
       upButton.disabled = index === 0;
@@ -1379,7 +1379,7 @@ oklch(72% 0.12 340)
 
       const downButton = document.createElement("button");
       downButton.type = "button";
-      downButton.textContent = "v";
+      downButton.textContent = "˅";
       downButton.setAttribute("aria-label", `Move color ${swatchLabel} down`);
       downButton.title = `Move color ${swatchLabel} down`;
       downButton.disabled = index >= palette.length - 1;
@@ -2289,6 +2289,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
