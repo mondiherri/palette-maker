@@ -1750,6 +1750,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
 	  
       if (canvas.width !== targetW || canvas.height !== targetH) {
         canvas.width = targetW;
+		canvas.style.width = `${targetW}px`;
         canvas.height = targetH;
       }
       const ctx = canvas.getContext("2d");
@@ -2321,6 +2322,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
