@@ -8,6 +8,7 @@ Start from your own palette, and then vary the colors in the palette preview.
 
 Other palette generation tools:
 https://medialab.github.io/iwanthue/
+https://colorbrewer2.org/
 
 Thanks to https://colorjs.io/
 
