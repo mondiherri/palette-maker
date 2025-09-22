@@ -1996,7 +1996,6 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
 			}
 		}
 		
-		
 		candidate ??= buildOKLCH(randomIn(Lmin,Lmax), randomIn(Cmin,Cmax), h);
 
 		out.push(candidate);
@@ -2018,9 +2017,12 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         let candidate=null;
         for(let tries=0;tries<30;tries++){
           const l=randomIn(Lmin,Lmax), c=randomIn(Cmin,Cmax), col=buildOKLCH(l,c,h);
-          if(!closeToAny(col,excludedColors)){ candidate=col; break; }
+          if(!closeToAny(col,excludedColors)){ 
+			  candidate=col; 
+			  break; 
+		  }
         }
-        candidate ??= buildOKLCH((Lmin+Lmax)/2,(Cmin+Cmax)/2,h); out.push(candidate);
+        candidate ??= buildOKLCH(randomIn(Lmin,Lmax), randomIn(Cmin,Cmax), h);
       }
       palette=out; render();
     }
@@ -2286,6 +2288,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
