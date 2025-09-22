@@ -412,6 +412,35 @@
       .overview-wrap { height: 280px; }
     }
     @media (max-width: 640px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+
+	/* Tooltip container */
+	.tooltip {
+	  position: relative;
+	  display: inline-block;
+	  border-bottom: 1px dotted black; /* Add dots under the hoverable text */
+	  cursor: pointer;
+	}
+	
+	/* Tooltip text */
+	.tooltiptext {
+	  visibility: hidden; /* Hidden by default */
+	  width: fit-content;
+	  min-width: 130px;
+	  background-color: lightgrey;
+	  color: black;
+	  text-align: center;
+	  top: -5px;
+      left: 105%;
+	  padding: 5px 0;
+	  border-radius: 6px;
+	  position: absolute;
+	  z-index: 1; /* Ensure tooltip is displayed above content */
+	}
+	
+	/* Show the tooltip text on hover */
+	.tooltip:hover .tooltiptext {
+	  visibility: visible;
+}
   </style>
 </head>
 <body>
@@ -515,7 +544,10 @@ oklch(72% 0.12 340)
               </div>
 			  
 			  <div class="btnbar">
-              <button id="btnGenFromInitial" class="primary">Generate from initial (even hues)</button>
+				  <div class="tooltip">
+					  <button id="btnGenFromInitial" class="primary">Generate from initial (even hues)</button>
+				      <span class="tooltiptext">When no initial color (i.e. hue) is defined, picks from a random hue.</span>
+				  </div>
               <button id="btnGenRandom">Generate randomly (even hues)</button>
               <button id="btnAddNext">Add next (respect L C H ranges, min Δ)</button>
             </div>
@@ -2289,6 +2321,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
