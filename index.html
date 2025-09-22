@@ -112,11 +112,11 @@
       flex-direction: column;
       gap: 10px;
       align-items: stretch;
-      min-width: 200px;
       position: sticky;
       top: 24px;
       align-self: flex-start;
 	  height: -webkit-fill-available;
+	  width: fit-content;
     }
     .overview-header {
       --lane-count: 1;
@@ -1865,7 +1865,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
           const display = toDisplayColor(color);
           const ok = display.to("oklch");
           span.style.backgroundColor = colorToCss(display);
-          span.style.color = textColorFor(ok);
+          span.style.color = "#000"; // to show white font for darker hightlight color, use: textColorFor(ok);
           
           span.classList.remove("inactive");
           const srgbClone = color.clone();
@@ -2325,6 +2325,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
