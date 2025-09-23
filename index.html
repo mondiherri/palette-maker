@@ -1234,7 +1234,18 @@ oklch(72% 0.12 340)
       return arr;
     }
     const buildOKLCH = (l,c,h)=> new Color("oklch",[clamp(l,0,1),clamp(c,0,0.4),normHue(h)]);
+	  
+	  // determine if text should be white or black. Used for the swatch preview or the text preview and overview
     const textColorFor = (bg) => (bg.oklch.l > 0.65 ? "#000" : "#fff");
+	  
+	//Alternative function determine if text should be white or black. Used for the text preview and overview
+	const textColorFor_Alt = (bg) =>{
+            const srgbClone = bg.to("srgb");
+            srgbClone.toGamut({space: "srgb"});
+            //var t = 1 - (.299 * srgbClone.coords[0] + .587 * srgbClone.coords[1] + .114 * srgbClone.coords[2]) / 255;
+			var t = 1 - (.299 * srgbClone.coords[0] + .587 * srgbClone.coords[1] + .114 * srgbClone.coords[2]);
+            return srgbClone.alpha && srgbClone.alpha < .3 || t < .5 ? "black" : "white"
+    }
     const fmtOKLCH = (c)=>`oklch(${(c.oklch.l*100).toFixed(1)}% ${c.oklch.c.toFixed(4)} ${isFinite(c.oklch.h)?c.oklch.h.toFixed(1):0})`;
 
     // Slider configuration for per-swatch OKLCH controls.
@@ -1711,7 +1722,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
         const chip = document.createElement("div");
         chip.className = "overview-chip";
         chip.style.backgroundColor = colorToCss(display);
-        chip.style.color = textColorFor(display.to("oklch"));
+        chip.style.color = textColorFor_Alt(display.to("oklch"));
         chip.textContent = label;
         const srgbClone = color.clone();
         srgbClone.toGamut({ space: "srgb" });
@@ -1865,7 +1876,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
           const display = toDisplayColor(color);
           const ok = display.to("oklch");
           span.style.backgroundColor = colorToCss(display);
-          span.style.color = "#000"; // to show white font for darker hightlight color, use: textColorFor(ok);
+          span.style.color = textColorFor_Alt(ok);
           
           span.classList.remove("inactive");
           const srgbClone = color.clone();
@@ -2325,6 +2336,7 @@ thoughtful defaults streamline onboarding journeys and reduce friction for new c
   </script>
 </body>
 </html>
+
 
 
 
