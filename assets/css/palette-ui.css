@@ -1,0 +1,100 @@
+:root {
+  --bg: #fafaf8;
+  --panel: #ffffff;
+  --muted: #666;
+  --accent: #0b84f3;
+  --border: #e8e8e3;
+}
+
+.palette-app {
+  background: var(--bg);
+  color: #111;
+  font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", "Liberation Sans", sans-serif;
+  padding: 24px;
+}
+
+.palette-app h1 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+
+.palette-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.palette-controls {
+  display: grid;
+  gap: 12px;
+}
+
+.palette-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.palette-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #333;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.palette-note {
+  font-size: 12px;
+  color: #777;
+}
+
+.palette-btnbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.palette-pill-button {
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+
+.palette-tablist {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.palette-tablist .v-tab--active {
+  background: #eef6ff !important;
+  border-color: #cfe4ff !important;
+  color: #0a62c7 !important;
+}
+
+.palette-swatch {
+  min-height: 76px;
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.palette-sample-text {
+  background: #fdfdf9;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 6px;
+  line-height: 1.55;
+  color: #2a2a2a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
