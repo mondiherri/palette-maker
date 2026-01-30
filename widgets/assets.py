@@ -3,7 +3,6 @@ from pathlib import Path
 
 ASSETS_ROOT = Path(__file__).resolve().parent.parent / "assets"
 
-
 def load_assets() -> None:
     from IPython.display import HTML, display
 
