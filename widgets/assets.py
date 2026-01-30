@@ -1,6 +1,6 @@
 from pathlib import Path
 
-
+# Do sth with the path
 ASSETS_ROOT = Path(__file__).resolve().parent.parent / "assets"
 
 def load_assets() -> None:
