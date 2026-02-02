@@ -1,0 +1,1598 @@
+import Color from "https://colorjs.io/dist/color.js";
+
+let paletteLab = null;
+import("https://esm.sh/palette-lab").then(m => paletteLab = m).catch(() => { });
+
+const els = {
+    targetSize: document.getElementById("targetSize"),
+    targetSpan: document.getElementById("targetSpan"),
+    minDistance: document.getElementById("minDistance"),
+    initialColor: document.getElementById("initialColor"),
+    hueExStart: document.getElementById("hueExStart"),
+    hueExEnd: document.getElementById("hueExEnd"),
+    sRGBGamut: document.getElementById("sRGBGamut"),
+    inputColors: document.getElementById("inputColors"),
+    lMin: document.getElementById("lMin"), lMax: document.getElementById("lMax"),
+    cMin: document.getElementById("cMin"), cMax: document.getElementById("cMax"),
+    excludeColors: document.getElementById("excludeColors"),
+    btnApplyInput: document.getElementById("btnApplyInput"),
+    btnClear: document.getElementById("btnClear"),
+    btnGenFromInitial: document.getElementById("btnGenFromInitial"),
+    btnGenRandom: document.getElementById("btnGenRandom"),
+    btnAddNext: document.getElementById("btnAddNext"),
+    hueSlider: document.getElementById("hueSlider"),
+    hueWindow: document.getElementById("hueWindow"),
+    dirL: document.getElementById("dirL"),
+    dirC: document.getElementById("dirC"),
+    dirLReadout: document.getElementById("dirLReadout"),
+    dirCReadout: document.getElementById("dirCReadout"),
+    dirPreview: document.getElementById("dirPreview"),
+    btnAddNextDirectional: document.getElementById("btnAddNextDirectional"),
+    tabBasic: document.getElementById("tabBasic"),
+    tabDirectional: document.getElementById("tabDirectional"),
+    tabSettings: document.getElementById("tabSettings"),
+    panelBasic: document.getElementById("panelBasic"),
+    panelDirectional: document.getElementById("panelDirectional"),
+    panelSettings: document.getElementById("panelSettings"),
+    grid: document.getElementById("grid"),
+    layoutMode: document.getElementById("layoutMode"),
+    count: document.getElementById("count"),
+    statL: document.getElementById("statL"),
+    statC: document.getElementById("statC"),
+    statD: document.getElementById("statD"),
+
+    btnCopyOKLCH: document.getElementById("btnCopyOKLCH"),
+    btnCopyHex: document.getElementById("btnCopyHex"),
+    btnCopyJSON: document.getElementById("btnCopyJSON"),
+    btnRandomizeText: document.getElementById("btnRandomizeText"),
+    highlightText: document.getElementById("highlightText"),
+    previewFont: document.getElementById("previewFont"),
+    previewFontSize: document.getElementById("previewFontSize"),
+    previewLineHeight: document.getElementById("previewLineHeight"),
+    previewBackground: document.getElementById("previewBackground"),
+    overviewCanvas: document.getElementById("overviewCanvas"),
+    overviewHeader: document.getElementById("overviewHeader"),
+    overviewPanel: document.getElementById("overviewPanel"),
+    palettePanel: document.getElementById("palettePanel"),
+    highlightPanel: document.getElementById("highlightPanel"),
+    panelResizer: document.getElementById("panelResizer"),
+    rightPanels: document.querySelector(".right-panels"),
+};
+
+// --- Tab controls for the left column ---
+const tabConfig = [
+    { key: "basic", button: els.tabBasic, panel: els.panelBasic },
+    { key: "dir", button: els.tabDirectional, panel: els.panelDirectional },
+    { key: "settings", button: els.tabSettings, panel: els.panelSettings },
+];
+
+// Switch the visible panel and focus state when a tab changes.
+function activateTab(which) {
+    tabConfig.forEach(({ key, button, panel }) => {
+        const active = key === which;
+        if (button) {
+            button.setAttribute("aria-selected", active ? "true" : "false");
+            button.setAttribute("tabindex", active ? "0" : "-1");
+        }
+        if (panel) {
+            panel.classList.toggle("active", active);
+        }
+    });
+}
+if (els.tabBasic) {
+    els.tabBasic.addEventListener("click", () => activateTab("basic"));
+}
+if (els.tabDirectional) {
+    els.tabDirectional.addEventListener("click", () => activateTab("dir"));
+}
+if (els.tabSettings) {
+    els.tabSettings.addEventListener("click", () => activateTab("settings"));
+}
+
+// Active palette colors and math helpers
+let palette = [];
+let pendingReorderFocus = null;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const OVERVIEW_RECT_WIDTH = 22;
+const OVERVIEW_RECT_HEIGHT = 6;
+const OVERVIEW_LANE_GAP = 2;
+const getOverviewTotalWidth = (count) => count > 0
+    ? (count * OVERVIEW_RECT_WIDTH) + ((count - 1) * OVERVIEW_LANE_GAP)
+    : 0;
+
+// Persisted preview settings for the document highlight area.
+const PREVIEW_SETTINGS_KEY = "palette-maker:preview-settings";
+const PREVIEW_FONT_SIZE_RANGE = { min: 10, max: 24 };
+const PREVIEW_LINE_HEIGHT_RANGE = { min: 1, max: 2.5 };
+const PREVIEW_FONTS = {
+    sourceSans: "\"Source Sans Pro\", \"Helvetica Neue\", Helvetica, Arial, sans-serif",
+    arial: "\"Arial\", sans-serif",
+    arialBlack: "\"Arial Black\", sans-serif",
+    calibri: "\"Calibri\", sans-serif",
+    cambria: "\"Cambria\", serif",
+    candara: "\"Candara\", sans-serif",
+    comicSans: "\"Comic Sans MS\", cursive",
+    consolas: "\"Consolas\", \"Courier New\", monospace",
+    constantia: "\"Constantia\", serif",
+    corbel: "\"Corbel\", sans-serif",
+    courierNew: "\"Courier New\", monospace",
+    dotum: "\"Dotum\", sans-serif",
+    ebrima: "\"Ebrima\", sans-serif",
+    franklinGothicMedium: "\"Franklin Gothic Medium\", sans-serif",
+    gabriola: "\"Gabriola\", cursive",
+    georgia: "\"Georgia\", serif",
+    leelawadee: "\"Leelawadee\", sans-serif",
+    lucidaSansUnicode: "\"Lucida Sans Unicode\", sans-serif",
+    malgunGothic: "\"Malgun Gothic\", sans-serif",
+    microsoftHimalaya: "\"Microsoft Himalaya\", serif",
+    microsoftJhengHei: "\"Microsoft JhengHei\", sans-serif",
+    microsoftNewTaiLue: "\"Microsoft New Tai Lue\", sans-serif",
+    microsoftPhagsPa: "\"Microsoft PhagsPa\", sans-serif",
+    microsoftSansSerif: "\"Microsoft Sans Serif\", sans-serif",
+    microsoftTaiLe: "\"Microsoft Tai Le\", sans-serif",
+    microsoftYaHei: "\"Microsoft YaHei\", sans-serif",
+    palatinoLinotype: "\"Palatino Linotype\", serif",
+    segoePrint: "\"Segoe Print\", cursive",
+    segoeUI: "\"Segoe UI\", sans-serif",
+    tahoma: "\"Tahoma\", sans-serif",
+    timesNewRoman: "\"Times New Roman\", serif",
+    trebuchetMS: "\"Trebuchet MS\", sans-serif",
+    verdana: "\"Verdana\", sans-serif",
+};
+const DEFAULT_PREVIEW_SETTINGS = {
+    font: "sourceSans",
+    fontSize: 13,
+    lineHeight: 1.55,
+    background: "#fdfdf9",
+};
+
+let previewSettings = loadPreviewSettings();
+
+// Clean persisted values and clamp them to supported ranges.
+function normalizePreviewSettings(raw) {
+    const normalized = { ...DEFAULT_PREVIEW_SETTINGS };
+    if (raw && typeof raw === "object") {
+        if (typeof raw.font === "string" && raw.font in PREVIEW_FONTS) {
+            normalized.font = raw.font;
+        }
+        const parsedSize = Number(raw.fontSize);
+        if (Number.isFinite(parsedSize)) {
+            normalized.fontSize = clamp(parsedSize, PREVIEW_FONT_SIZE_RANGE.min, PREVIEW_FONT_SIZE_RANGE.max);
+        }
+        const parsedLineHeight = Number(raw.lineHeight);
+        if (Number.isFinite(parsedLineHeight)) {
+            normalized.lineHeight = clamp(parsedLineHeight, PREVIEW_LINE_HEIGHT_RANGE.min, PREVIEW_LINE_HEIGHT_RANGE.max);
+        }
+        if (typeof raw.background === "string") {
+            const trimmed = raw.background.trim();
+            if (/^#[0-9a-f]{6}$/i.test(trimmed)) {
+                normalized.background = trimmed.toLowerCase();
+            }
+        }
+    }
+    return normalized;
+}
+
+// Read saved preview settings from localStorage.
+function loadPreviewSettings() {
+    try {
+        const stored = localStorage.getItem(PREVIEW_SETTINGS_KEY);
+        if (!stored) return { ...DEFAULT_PREVIEW_SETTINGS };
+        const parsed = JSON.parse(stored);
+        return normalizePreviewSettings(parsed);
+    } catch {
+        return { ...DEFAULT_PREVIEW_SETTINGS };
+    }
+}
+
+// Persist the current preview configuration.
+function persistPreviewSettings() {
+    try {
+        localStorage.setItem(PREVIEW_SETTINGS_KEY, JSON.stringify(previewSettings));
+    } catch { }
+}
+
+// Apply preview styling to the sample text area.
+function applyPreviewSettings() {
+    if (!els.highlightText) return;
+    const fontKey = previewSettings.font in PREVIEW_FONTS ? previewSettings.font : DEFAULT_PREVIEW_SETTINGS.font;
+    const fontFamily = PREVIEW_FONTS[fontKey] || PREVIEW_FONTS[DEFAULT_PREVIEW_SETTINGS.font];
+    if (fontFamily) {
+        els.highlightText.style.fontFamily = fontFamily;
+    }
+    const fontSize = clamp(
+        Number(previewSettings.fontSize) || DEFAULT_PREVIEW_SETTINGS.fontSize,
+        PREVIEW_FONT_SIZE_RANGE.min,
+        PREVIEW_FONT_SIZE_RANGE.max,
+    );
+    els.highlightText.style.fontSize = `${fontSize}px`;
+    const lineHeight = clamp(
+        Number(previewSettings.lineHeight) || DEFAULT_PREVIEW_SETTINGS.lineHeight,
+        PREVIEW_LINE_HEIGHT_RANGE.min,
+        PREVIEW_LINE_HEIGHT_RANGE.max,
+    );
+    els.highlightText.style.lineHeight = String(lineHeight);
+    const background = /^#[0-9a-f]{6}$/i.test(previewSettings.background)
+        ? previewSettings.background
+        : DEFAULT_PREVIEW_SETTINGS.background;
+    els.highlightText.style.backgroundColor = background;
+}
+
+// Keep form controls in sync with stored preview settings.
+function syncPreviewControls() {
+    if (els.previewFont) {
+        const fontKey = previewSettings.font in PREVIEW_FONTS ? previewSettings.font : DEFAULT_PREVIEW_SETTINGS.font;
+        els.previewFont.value = fontKey;
+    }
+    if (els.previewFontSize) {
+        const fontSize = clamp(
+            Number(previewSettings.fontSize) || DEFAULT_PREVIEW_SETTINGS.fontSize,
+            PREVIEW_FONT_SIZE_RANGE.min,
+            PREVIEW_FONT_SIZE_RANGE.max,
+        );
+        els.previewFontSize.value = String(fontSize);
+    }
+    if (els.previewLineHeight) {
+        const lineHeight = clamp(
+            Number(previewSettings.lineHeight) || DEFAULT_PREVIEW_SETTINGS.lineHeight,
+            PREVIEW_LINE_HEIGHT_RANGE.min,
+            PREVIEW_LINE_HEIGHT_RANGE.max,
+        );
+        const roundedLineHeight = Math.round(lineHeight * 100) / 100;
+        els.previewLineHeight.value = String(roundedLineHeight);
+    }
+    if (els.previewBackground) {
+        const background = /^#[0-9a-f]{6}$/i.test(previewSettings.background)
+            ? previewSettings.background
+            : DEFAULT_PREVIEW_SETTINGS.background;
+        els.previewBackground.value = background;
+    }
+}
+
+// Update a single preview setting and refresh dependent UI.
+function updatePreviewSetting(key, value) {
+    previewSettings = { ...previewSettings, [key]: value };
+    syncPreviewControls();
+    applyPreviewSettings();
+    persistPreviewSettings();
+}
+
+syncPreviewControls();
+applyPreviewSettings();
+
+setupPanelResizer();
+// Allow palette and preview panels to be resized with the separator.
+function setupPanelResizer() {
+    const resizer = els.panelResizer;
+    const palettePanel = els.palettePanel;
+    const highlightPanel = els.highlightPanel;
+    const overviewPanel = els.overviewPanel;
+    const container = els.rightPanels;
+    if (!resizer || !palettePanel || !highlightPanel || !container) return;
+
+    const STORAGE_KEY = "palette-maker:palette-width";
+    const MIN_PALETTE = 260;
+    const MIN_PREVIEW = 260;
+    const MIN_OVERVIEW = 200;
+    let savedWidth = null;
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        const parsed = stored == null ? null : parseFloat(stored);
+        if (Number.isFinite(parsed)) savedWidth = parsed;
+    } catch {
+        savedWidth = null;
+    }
+    let lastWidth = savedWidth;
+    let activePointer = null;
+    let startX = 0;
+    let startWidth = 0;
+
+    const getMetrics = () => {
+        const styles = getComputedStyle(container);
+        const isRow = styles.flexDirection.startsWith("row");
+        const gap = parseFloat(styles.columnGap || styles.gap || "0") || 0;
+        const containerWidth = container.getBoundingClientRect().width;
+        const resizerWidth = resizer.offsetWidth || parseFloat(getComputedStyle(resizer).width) || 0;
+        let overviewWidth = 0;
+        if (overviewPanel) {
+            const computed = getComputedStyle(overviewPanel);
+            if (computed.display !== "none") {
+                const rect = overviewPanel.getBoundingClientRect();
+                const basis = parseFloat(computed.flexBasis);
+                const minWidth = parseFloat(computed.minWidth);
+                overviewWidth = rect.width;
+                if (!Number.isFinite(overviewWidth) || overviewWidth <= 0) {
+                    overviewWidth = Number.isFinite(basis) ? basis : 0;
+                }
+                if (Number.isFinite(minWidth)) {
+                    overviewWidth = Math.max(overviewWidth, minWidth);
+                }
+                overviewWidth = Math.max(overviewWidth, MIN_OVERVIEW);
+            }
+        }
+        const gapCount = overviewWidth > 0 ? 3 : 2;
+        const maxPalette = containerWidth - (MIN_PREVIEW + overviewWidth + resizerWidth + gap * gapCount);
+        return { isRow, gap, containerWidth, resizerWidth, overviewWidth, maxPalette };
+    };
+
+    const updateAria = (width, metrics) => {
+        if (!metrics || !metrics.isRow) {
+            resizer.setAttribute("aria-disabled", "true");
+            resizer.removeAttribute("aria-valuemin");
+            resizer.removeAttribute("aria-valuemax");
+            resizer.removeAttribute("aria-valuenow");
+            return;
+        }
+        resizer.removeAttribute("aria-disabled");
+        const maxPalette = Math.max(MIN_PALETTE, metrics.maxPalette);
+        resizer.setAttribute("aria-valuemin", String(MIN_PALETTE));
+        resizer.setAttribute("aria-valuemax", String(Math.round(maxPalette)));
+        if (Number.isFinite(width)) {
+            resizer.setAttribute("aria-valuenow", String(Math.round(width)));
+        } else {
+            resizer.removeAttribute("aria-valuenow");
+        }
+    };
+
+    const applyWidth = (value, { persist = false } = {}) => {
+        const metrics = getMetrics();
+        if (!metrics) return null;
+        if (!metrics.isRow) {
+            palettePanel.style.flexBasis = "";
+            highlightPanel.style.flexBasis = "";
+            updateAria(null, metrics);
+            return null;
+        }
+        const maxPalette = Math.max(MIN_PALETTE, metrics.maxPalette);
+        const basis = Number.isFinite(value)
+            ? value
+            : (Number.isFinite(lastWidth) ? lastWidth : palettePanel.getBoundingClientRect().width);
+        const width = clamp(basis, MIN_PALETTE, maxPalette);
+        palettePanel.style.flexBasis = `${width}px`;
+        highlightPanel.style.flexBasis = "";
+        lastWidth = width;
+        updateAria(width, metrics);
+        if (persist) {
+            savedWidth = width;
+            try {
+                localStorage.setItem(STORAGE_KEY, String(Math.round(width)));
+            } catch {
+                /* ignore storage errors */
+            }
+        }
+        return width;
+    };
+
+    const handleResize = () => {
+        const metrics = getMetrics();
+        if (!metrics) return;
+        if (!metrics.isRow) {
+            palettePanel.style.flexBasis = "";
+            highlightPanel.style.flexBasis = "";
+            updateAria(null, metrics);
+            container.classList.remove("is-resizing");
+            return;
+        }
+        const width = Number.isFinite(lastWidth) ? lastWidth : savedWidth;
+        applyWidth(width, { persist: false });
+    };
+
+    if (Number.isFinite(savedWidth)) {
+        lastWidth = savedWidth;
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    resizer.addEventListener("pointerdown", (event) => {
+        const metrics = getMetrics();
+        if (!metrics || !metrics.isRow) return;
+        activePointer = event.pointerId;
+        startX = event.clientX;
+        startWidth = palettePanel.getBoundingClientRect().width;
+        resizer.setPointerCapture(activePointer);
+        container.classList.add("is-resizing");
+        event.preventDefault();
+    });
+
+    resizer.addEventListener("pointermove", (event) => {
+        if (activePointer === null) return;
+        const metrics = getMetrics();
+        if (!metrics || !metrics.isRow) return;
+        const delta = event.clientX - startX;
+        applyWidth(startWidth + delta, { persist: false });
+        event.preventDefault();
+    });
+
+    const finishPointer = () => {
+        if (activePointer === null) return;
+        resizer.releasePointerCapture(activePointer);
+        activePointer = null;
+        container.classList.remove("is-resizing");
+        applyWidth(lastWidth, { persist: true });
+    };
+
+    resizer.addEventListener("pointerup", finishPointer);
+    resizer.addEventListener("pointercancel", finishPointer);
+
+    resizer.addEventListener("keydown", (event) => {
+        const metrics = getMetrics();
+        if (!metrics || !metrics.isRow) return;
+        const step = event.shiftKey ? 40 : 16;
+        const currentWidth = Number.isFinite(lastWidth) ? lastWidth : palettePanel.getBoundingClientRect().width;
+        let handled = false;
+        if (event.key === "ArrowLeft") {
+            applyWidth(currentWidth - step, { persist: true });
+            handled = true;
+        } else if (event.key === "ArrowRight") {
+            applyWidth(currentWidth + step, { persist: true });
+            handled = true;
+        } else if (event.key === "Home") {
+            applyWidth(MIN_PALETTE, { persist: true });
+            handled = true;
+        } else if (event.key === "End") {
+            const metricsNow = getMetrics();
+            if (metricsNow && metricsNow.isRow) {
+                const maxPalette = Math.max(MIN_PALETTE, metricsNow.maxPalette);
+                applyWidth(maxPalette, { persist: true });
+                handled = true;
+            }
+        }
+        if (handled) {
+            event.preventDefault();
+        }
+    });
+}
+
+// --- Color parsing and math helpers ---
+const pctToUnit = (val) => Number.isNaN(val) ? 0 : (val > 1.5 ? clamp(val / 100, 0, 1) : clamp(val, 0, 1));
+const normHue = (h) => (h % 360);
+const circularDist = (a, b) => { const d = Math.abs(normHue(a) - normHue(b)); return Math.min(d, 360 - d); };
+const getTargetSize = () => clamp(parseInt(els.targetSize.value || "25", 10) || 25, 1, 200);
+
+// Parse user input into Color objects, supporting plain numbers and CSS strings.
+function parseColor(str) {
+
+    const s = String(str || "").trim(); if (!s) return null;
+    try { return new Color(s); }
+    catch {
+        const parts = s.split(/[,\s]+/).map(Number).filter(n => !Number.isNaN(n));
+        if (parts.length === 3) { let [l, c, h] = parts; if (l > 1.5) l /= 100; return new Color("oklch", [clamp(l, 0, 1), clamp(c, 0, 0.4), normHue(h)]); }
+    }
+    return null;
+}
+const parseColorsMultiLine = (text) => text.split(/\r?\n/).map(parseColor).filter(Boolean);
+
+// Measure distance between two colors using a perceptual space.
+function oklchDistance(c1, c2) {
+    /*
+    const L1=c1.oklch.l, C1=c1.oklch.c, H1=(c1.oklch.h||0)*Math.PI/180;
+    const a1=C1*Math.cos(H1), b1=C1*Math.sin(H1);
+    const L2=c2.oklch.l, C2=c2.oklch.c, H2=(c2.oklch.h||0)*Math.PI/180;
+    const a2=C2*Math.cos(H2), b2=C2*Math.sin(H2);
+    return Math.hypot(L1-L2, a1-a2, b1-b2);
+    */
+    return c2.distance(c1, "jzazbz");
+}
+// Helper to detect colors that violate the minimum distance threshold.
+function closeToAny(color, list) {
+    const tol = parseFloat(els.minDistance.value) || 0.08;
+    return (color, list, tol) => list.some(o => oklchDistance(color, o) < tol);
+}
+
+const randomIn = (min, max) => min + Math.random() * (max - min);
+const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+// Fisher–Yates shuffle for randomized ordering.
+function shuffleInPlace(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = randomInt(0, i);
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+const buildOKLCH = (l, c, h) => new Color("oklch", [clamp(l, 0, 1), clamp(c, 0, 0.4), normHue(h)]);
+
+// determine if text should be white or black. Used for the swatch preview or the text preview and overview
+const textColorFor = (bg) => (bg.oklch.l > 0.65 ? "#000" : "#fff");
+
+//Alternative function determine if text should be white or black. Used for the text preview and overview
+const textColorFor_Alt = (bg) => {
+    const srgbClone = bg.to("srgb");
+    srgbClone.toGamut({ space: "srgb" });
+    //var t = 1 - (.299 * srgbClone.coords[0] + .587 * srgbClone.coords[1] + .114 * srgbClone.coords[2]) / 255;
+    var t = 1 - (.299 * srgbClone.coords[0] + .587 * srgbClone.coords[1] + .114 * srgbClone.coords[2]);
+    return srgbClone.alpha && srgbClone.alpha < .3 || t < .5 ? "black" : "white"
+}
+const fmtOKLCH = (c) => `oklch(${(c.oklch.l * 100).toFixed(1)}% ${c.oklch.c.toFixed(4)} ${isFinite(c.oklch.h) ? c.oklch.h.toFixed(1) : 0})`;
+
+// Slider configuration for per-swatch OKLCH controls.
+const swatchSliderConfigs = [
+    {
+        key: "l",
+        label: "Lightness",
+        min: 0,
+        max: 100,
+        step: 0.1,
+        toSlider: (color) => clamp(color.oklch.l, 0, 1) * 100,
+        format: (value) => `${value.toFixed(1)}%`,
+        toColor: (value) => clamp(value / 100, 0, 1),
+    },
+    {
+        key: "c",
+        label: "Chroma",
+        min: 0,
+        max: 0.4,
+        step: 0.001,
+        toSlider: (color) => clamp(color.oklch.c, 0, 0.4),
+        format: (value) => value.toFixed(3),
+        toColor: (value) => clamp(value, 0, 0.4),
+    },
+    {
+        key: "h",
+        label: "Hue",
+        min: 0,
+        max: 360,
+        step: 1,
+        toSlider: (color) => (Number.isFinite(color.oklch.h) ? normHue(color.oklch.h) : 0),
+        format: (value) => `${Math.round(normHue(value))}°`,
+        toColor: (value) => normHue(value),
+    },
+];
+
+// Build the metadata summary for a swatch (original + nearest sRGB).
+function createSwatchMetaHTML(color) {
+    const srgbClone = color.clone();
+    srgbClone.toGamut({ space: "srgb" });
+    const srgbHex = srgbClone.toString({ format: "hex" });
+    return `
+        <div><span>Generated</span><span>${fmtOKLCH(color)}</span></div>
+        <div style="background: ${srgbHex}"><span>Nearest in sRGB</span><span>${srgbHex}</span></div>
+        <div style="background: ${srgbHex}"><span>Nearest OKLCH</span><span>${fmtOKLCH(srgbClone)}</span></div>
+      `.trim();
+}
+
+// Sync slider positions and readouts with the current color.
+function syncSwatchControls(container, color) {
+    if (!container) return;
+    for (const config of swatchSliderConfigs) {
+        const slider = container.querySelector(`input[data-component="${config.key}"]`);
+        const readout = container.querySelector(`span[data-component-value="${config.key}"]`);
+        if (!slider) continue;
+        const sliderValue = config.toSlider(color);
+        slider.value = String(sliderValue);
+        if (readout) {
+            readout.textContent = config.format(sliderValue);
+        }
+    }
+}
+
+// Apply the chosen color to a swatch card and its metadata block.
+function updateSwatchAppearance(swatchEl, metaEl, color) {
+    if (!swatchEl) return;
+    const displayColor = toDisplayColor(color);
+    swatchEl.style.background = colorToCss(displayColor);
+    swatchEl.style.color = textColorFor(displayColor.to("oklch"));
+    if (metaEl) {
+        metaEl.innerHTML = createSwatchMetaHTML(color);
+    }
+}
+
+// Rebuild a swatch color when any slider input changes.
+function handleSwatchSliderInput(index, swatchEl, metaEl, controls) {
+    if (!controls) return null;
+    const values = {};
+    for (const config of swatchSliderConfigs) {
+        const slider = controls.querySelector(`input[data-component="${config.key}"]`);
+        if (!slider) return null;
+        const raw = parseFloat(slider.value);
+        if (!Number.isFinite(raw)) return null;
+        values[config.key] = config.toColor(raw);
+    }
+    const newColor = buildOKLCH(values.l, values.c, values.h);
+    palette[index] = newColor;
+    updateSwatchAppearance(swatchEl, metaEl, newColor);
+    syncSwatchControls(controls, newColor);
+    updatePaletteOutputs();
+    return newColor;
+}
+
+// Construct slider controls that adjust OKLCH components for a swatch.
+function createSwatchControls(index, color, swatchEl, metaEl) {
+    const container = document.createElement("div");
+    container.className = "swatch-controls";
+    for (const config of swatchSliderConfigs) {
+        const row = document.createElement("div");
+        row.className = "swatch-control-row";
+
+        const label = document.createElement("span");
+        label.className = "swatch-control-label";
+        label.textContent = config.label;
+
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = String(config.min);
+        slider.max = String(config.max);
+        slider.step = String(config.step);
+        const sliderValue = config.toSlider(color);
+        slider.value = String(sliderValue);
+        slider.dataset.index = String(index);
+        slider.dataset.component = config.key;
+
+        const readout = document.createElement("span");
+        readout.className = "swatch-control-value";
+        readout.dataset.componentValue = config.key;
+        readout.textContent = config.format(sliderValue);
+
+        slider.addEventListener("input", () => {
+            const current = parseFloat(slider.value);
+            if (Number.isFinite(current)) {
+                readout.textContent = config.format(current);
+            }
+            handleSwatchSliderInput(index, swatchEl, metaEl, container);
+        });
+
+        slider.addEventListener("change", () => {
+            handleSwatchSliderInput(index, swatchEl, metaEl, container);
+        });
+
+        row.append(label, slider, readout);
+        container.appendChild(row);
+    }
+    return container;
+}
+
+function movePaletteColor(fromIndex, toIndex, focusDirection) {
+    if (fromIndex === toIndex) return;
+    if (toIndex < 0 || toIndex >= palette.length) return;
+    const [color] = palette.splice(fromIndex, 1);
+    palette.splice(toIndex, 0, color);
+    pendingReorderFocus = typeof focusDirection === "string"
+        ? { index: toIndex, direction: focusDirection }
+        : null;
+    render();
+}
+
+// Create the DOM for a palette swatch including controls.
+function createSwatchElement(color, index) {
+    const swatch = document.createElement("div");
+    swatch.className = "swatch";
+    swatch.dataset.index = String(index);
+
+    const header = document.createElement("div");
+    header.className = "swatch-header";
+
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "swatch-title";
+
+    const reorder = document.createElement("div");
+    reorder.className = "swatch-reorder";
+
+    const swatchLabel = `${indexToLabel(index)} - ${String(index + 1)}`;
+
+    const upButton = document.createElement("button");
+    upButton.type = "button";
+    upButton.textContent = "˄";
+    upButton.setAttribute("aria-label", `Move color ${swatchLabel} up`);
+    upButton.title = `Move color ${swatchLabel} up`;
+    upButton.disabled = index === 0;
+    upButton.dataset.reorder = "up";
+    upButton.addEventListener("click", () => {
+        movePaletteColor(index, index - 1, "up");
+    });
+
+    const downButton = document.createElement("button");
+    downButton.type = "button";
+    downButton.textContent = "˅";
+    downButton.setAttribute("aria-label", `Move color ${swatchLabel} down`);
+    downButton.title = `Move color ${swatchLabel} down`;
+    downButton.disabled = index >= palette.length - 1;
+    downButton.dataset.reorder = "down";
+    downButton.addEventListener("click", () => {
+        movePaletteColor(index, index + 1, "down");
+    });
+
+    reorder.append(upButton, downButton);
+
+    const tag = document.createElement("div");
+    tag.className = "tag";
+    tag.textContent = swatchLabel;
+
+    titleWrap.append(reorder, tag);
+
+    const meta = document.createElement("div");
+    meta.className = "meta monospace";
+
+    header.append(titleWrap, meta);
+    swatch.appendChild(header);
+
+    const controls = createSwatchControls(index, color, swatch, meta);
+    swatch.appendChild(controls);
+
+    updateSwatchAppearance(swatch, meta, color);
+    syncSwatchControls(controls, color);
+
+    return swatch;
+}
+
+// Refresh stats, highlight preview, and clipboard outputs.
+function updatePaletteOutputs() {
+    const N = getTargetSize();
+    els.count.textContent = Math.min(palette.length, N);
+    if (palette.length) {
+        const Ls = palette.map(c => c.oklch.l);
+        const Cs = palette.map(c => c.oklch.c);
+        const avgΔ = averagePairwiseDistance(palette);
+        els.statL.textContent = `${(Math.min(...Ls) * 100).toFixed(0)}–${(Math.max(...Ls) * 100).toFixed(0)}%`;
+        els.statC.textContent = `${Math.min(...Cs).toFixed(3)}–${Math.max(...Cs).toFixed(3)}`;
+        els.statD.textContent = avgΔ.toFixed(3);
+    } else {
+        els.statL.textContent = els.statC.textContent = els.statD.textContent = "–";
+    }
+    updateTextPreview();
+    if (paletteLab?.getStats) {
+        const palObj = { Generated: Object.fromEntries(palette.slice(0, N).map((c, i) => [String(i + 1).padStart(2, "0"), { base: c.to("srgb").toString({ format: "hex" }) }])) };
+        try { paletteLab.getStats(palObj); } catch { }
+    }
+}
+
+// Word bank that feeds the randomized highlight preview copy.
+const fillerWords = `
+adaptive collaborative teams deliver consistent insights through modular workflows that balance exploratory analysis with steady operational reviews
+the system keeps every contributor aligned with evolving targets while dashboards surface meaningful context from shared datasets
+automated checks preserve data integrity across releases and provide timely feedback loops for distributed squads working across zones
+structured rituals encourage transparent communication so that handoffs remain smooth and every launch maintains momentum toward customer value
+curated guides highlight critical dependencies and recommended playbooks for complex scenarios enabling rapid discovery of relevant knowledge  
+automobile device computer system apparatus spaceship contributor inventor application process development
+modular research notes capture lessons learned across iterations ensuring confident recovery paths and measurable service quality indicators for stakeholders
+thoughtful defaults streamline onboarding journeys and reduce friction for new collaborators joining active programs across the organization
+`.trim().split(/\s+/);
+const punctuationMarks = [".", ".", ".", ".", "?", "!"];
+
+let wordColorAssignments = new Map();
+let unassignedWordColorIndices = [];
+// Character ranges of highlighted words grouped by palette lane.
+let highlightCharRangesByLane = new Map();
+let highlightCharTotalLength = 0;
+
+// Normalize words for stable highlight assignments.
+function normalizeHighlightWord(word) {
+    return (word || "").toLowerCase();
+}
+
+// Reset mapping so repeated words reuse the same highlight color.
+function resetWordColorAssignments(colorIndices) {
+    wordColorAssignments = new Map();
+    unassignedWordColorIndices = colorIndices.length ? shuffleInPlace([...colorIndices]) : [];
+}
+
+// Map each highlight span to its character offsets so the overview can scale positions.
+function collectHighlightCharRanges(container, spans, colorCount) {
+    const rangesByLane = new Map();
+    let totalLength = 0;
+    if (!container || !spans.length || colorCount <= 0) {
+        highlightCharRangesByLane = rangesByLane;
+        highlightCharTotalLength = totalLength;
+        return { rangesByLane, totalLength };
+    }
+    const trackedSpans = new Set(spans);
+    const activeEntries = new Map();
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    while (node) {
+        const text = node.textContent || "";
+        const len = text.length;
+        if (len > 0) {
+            const element = node.parentElement?.closest?.("[data-color-index]");
+            if (element && trackedSpans.has(element)) {
+                const raw = Number(element.dataset.colorIndex);
+                if (Number.isFinite(raw) && raw >= 0 && raw < colorCount) {
+                    let laneRanges = rangesByLane.get(raw);
+                    if (!laneRanges) {
+                        laneRanges = [];
+                        rangesByLane.set(raw, laneRanges);
+                    }
+                    let entry = activeEntries.get(element);
+                    const spanStart = totalLength;
+                    const spanEnd = spanStart + len;
+                    if (!entry) {
+                        entry = {
+                            start: spanStart,
+                            end: spanEnd,
+                            element,
+                            wordKey: element.dataset.wordKey || normalizeHighlightWord(element.textContent || ""),
+                        };
+                        laneRanges.push(entry);
+                        activeEntries.set(element, entry);
+                    } else {
+                        entry.end = spanEnd;
+                    }
+                }
+            }
+        }
+        totalLength += len;
+        node = walker.nextNode();
+    }
+    highlightCharRangesByLane = rangesByLane;
+    highlightCharTotalLength = totalLength;
+    return { rangesByLane, totalLength };
+}
+
+// Retrieve or assign a palette slot for a specific word.
+function getColorIndexForWord(word) {
+    const key = normalizeHighlightWord(word);
+    if (wordColorAssignments.has(key)) {
+        return { index: wordColorAssignments.get(key), key };
+    }
+    if (!unassignedWordColorIndices.length) {
+        return null;
+    }
+    const nextIndex = unassignedWordColorIndices.pop();
+    wordColorAssignments.set(key, nextIndex);
+    return { index: nextIndex, key };
+}
+
+// Quick helper for generating nicer filler sentences.
+function capitalizeWord(word) {
+    if (!word) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+// Build a filler paragraph with a handful of highlighted terms.
+function createRandomParagraph() {
+    const words = [];
+    const wordCount = randomInt(9, 12);
+    for (let i = 0; i < wordCount; i++) {
+        words.push(fillerWords[randomInt(0, fillerWords.length - 1)]);
+    }
+    words[0] = capitalizeWord(words[0]);
+    const highlightCount = Math.min(randomInt(3, 4), wordCount);
+    const positions = shuffleInPlace(Array.from({ length: wordCount }, (_, i) => i))
+        .slice(0, highlightCount)
+        .sort((a, b) => a - b);
+    const highlighted = new Set(positions);
+    const p = document.createElement("p");
+    let createdHighlights = 0;
+    for (let i = 0; i < wordCount; i++) {
+        if (highlighted.has(i)) {
+            const assignment = getColorIndexForWord(words[i]);
+            if (assignment) {
+                const span = document.createElement("span");
+                span.dataset.colorIndex = String(assignment.index);
+                span.dataset.wordKey = assignment.key;
+                span.textContent = words[i];
+                p.appendChild(span);
+                createdHighlights += 1;
+            } else {
+                p.appendChild(document.createTextNode(words[i]));
+            }
+        } else {
+            p.appendChild(document.createTextNode(words[i]));
+        }
+        if (i < wordCount - 1) {
+            p.appendChild(document.createTextNode(" "));
+        }
+    }
+    const punctuation = punctuationMarks[randomInt(0, punctuationMarks.length - 1)];
+    p.appendChild(document.createTextNode(punctuation));
+    return { element: p, highlightCount: createdHighlights };
+}
+
+// Refill the preview area with randomized paragraphs and highlights.
+function randomizePreviewText() {
+    if (!els.highlightText) return;
+
+    const container = els.highlightText;
+    const availableColors = Math.min(palette.length, getTargetSize());
+    const colorIndices = availableColors > 0
+        ? Array.from({ length: availableColors }, (_, i) => i)
+        : [];
+    resetWordColorAssignments(colorIndices);
+    const styles = window.getComputedStyle(container);
+    let lineHeight = parseFloat(styles.lineHeight);
+    if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
+        const fontSize = parseFloat(styles.fontSize) || 13;
+        lineHeight = fontSize * 1.55;
+    }
+    const containerHeight = container.clientHeight || 708;
+    const baseParagraphCount = Math.max(12, Math.ceil(containerHeight / lineHeight) + 6);
+    const minParagraphsForColors = availableColors > 0 ? Math.ceil(availableColors / 2) : 0;
+    const paragraphCount = Math.max(baseParagraphCount, minParagraphsForColors);
+    const fragment = document.createDocumentFragment();
+    let highlightTotal = 0;
+    for (let i = 0; i < paragraphCount; i++) {
+        const { element, highlightCount } = createRandomParagraph();
+        fragment.appendChild(element);
+        highlightTotal += highlightCount;
+    }
+    while (highlightTotal < availableColors) {
+        const { element, highlightCount } = createRandomParagraph();
+        fragment.appendChild(element);
+        highlightTotal += highlightCount;
+    }
+    if (typeof container.replaceChildren === "function") {
+        container.replaceChildren(fragment);
+    } else {
+        container.innerHTML = "";
+        container.appendChild(fragment);
+    }
+    container.scrollTop = 0;
+    updateTextPreview();
+}
+
+// Clamp colors to sRGB when the toggle is active.
+function toDisplayColor(color) {
+    const clone = color.clone();
+    if (els.sRGBGamut?.checked) {
+        clone.toGamut({ space: "srgb" });
+    }
+    return clone;
+}
+
+// Format palette colors for CSS output and tooltips.
+function colorToCss(color) {
+    if (els.sRGBGamut?.checked) {
+        return color.toString({ format: "hex" });
+    }
+    return fmtOKLCH(color);
+}
+
+// Convert a zero-based index into spreadsheet-style lettering.
+function indexToLabel(i) {
+    let n = i;
+    let out = "";
+    while (n >= 0) {
+        out = String.fromCharCode(65 + (n % 26)) + out;
+        n = Math.floor(n / 26) - 1;
+    }
+    return out;
+}
+
+// Populate the overview header chips with palette colors.
+function updateOverviewHeader(colors) {
+    if (!els.overviewHeader) return;
+    const header = els.overviewHeader;
+    header.innerHTML = "";
+    header.classList.toggle("empty", colors.length === 0);
+    if (!colors.length) {
+        header.style.removeProperty("--lane-count");
+        header.style.removeProperty("--lane-width");
+        header.style.removeProperty("--lane-gap");
+        header.style.removeProperty("width");
+        const icon = document.createElement("span");
+        icon.className = "overview-empty-icon";
+        icon.setAttribute("aria-hidden", "true");
+        const msg = document.createElement("span");
+        msg.textContent = "Add colors to map highlights.";
+        header.append(icon, msg);
+        return;
+    }
+    const laneCount = colors.length;
+    const headerWidth = Math.max(1, Math.round(getOverviewTotalWidth(laneCount)));
+    header.style.setProperty("--lane-count", String(laneCount));
+    header.style.setProperty("--lane-width", `${OVERVIEW_RECT_WIDTH}px`);
+    header.style.setProperty("--lane-gap", `${OVERVIEW_LANE_GAP}px`);
+    header.style.width = `${headerWidth}px`;
+    colors.forEach((color, i) => {
+        if (!color) return;
+        const display = toDisplayColor(color);
+        const label = indexToLabel(i);
+        const chip = document.createElement("div");
+        chip.className = "overview-chip";
+        chip.style.backgroundColor = colorToCss(display);
+        chip.style.color = textColorFor_Alt(display.to("oklch"));
+        chip.textContent = label;
+        const srgbClone = color.clone();
+        srgbClone.toGamut({ space: "srgb" });
+        const chipLabel = `${fmtOKLCH(color)} | ${srgbClone.toString({ format: "hex" })}`;
+        chip.title = chipLabel;
+        chip.setAttribute("aria-label", `${label} lane: ${chipLabel}`);
+        chip.setAttribute("data-index", String(i));
+        header.appendChild(chip);
+    });
+}
+
+// Draw highlight usage lanes in the overview canvas.
+function drawOverview(spans, colors) {
+    if (!els.overviewCanvas || !els.highlightText) return;
+    const canvas = els.overviewCanvas;
+    const container = els.highlightText;
+    const colorCount = colors.length;
+    const styles = getComputedStyle(container);
+    const padTop = Number.parseFloat(styles.paddingTop) || 0;
+    const padBottom = Number.parseFloat(styles.paddingBottom) || 0;
+
+    if (colorCount > 0) {
+        const desiredCssWidth = Math.max(1, Math.round(getOverviewTotalWidth(colorCount)));
+        const currentWidth = Math.round(canvas.getBoundingClientRect().width || canvas.clientWidth || 0);
+        if (currentWidth !== desiredCssWidth) {
+            canvas.style.width = `${desiredCssWidth}px`;
+        }
+    } else if (canvas.style.width) {
+        canvas.style.removeProperty("width");
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    if (width === 0 || height === 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    const targetW = Math.max(1, Math.round(width * dpr));
+    const targetH = Math.max(1, Math.round(height * dpr));
+
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        // canvas.style.width = `${targetW}px`;
+        canvas.height = targetH;
+    }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#1f1f1f";  // "#181818"; Dark grey
+    ctx.fillRect(0, 0, width, height);
+
+    if (!colorCount) {
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
+        ctx.restore();
+        return;
+    }
+
+    const totalLaneWidth = getOverviewTotalWidth(colorCount);
+    const startX = Math.max(0, width > totalLaneWidth ? (width - totalLaneWidth) / 2 : 0);
+    const lanes = Array.from({ length: colorCount }, (_, i) => ({
+        x: startX + i * (OVERVIEW_RECT_WIDTH + OVERVIEW_LANE_GAP),
+        w: OVERVIEW_RECT_WIDTH,
+    }));
+
+    const contentHeight = Math.max(1, (container.scrollHeight || 0) - padTop - padBottom);
+    const viewportHeight = container.clientHeight || 1;
+
+    lanes.forEach(lane => {
+        ctx.fillStyle = "rgba(255,255,255,0)";
+        ctx.fillRect(lane.x, 0, lane.w, height);
+    });
+
+    const { rangesByLane, totalLength } = collectHighlightCharRanges(container, spans, colorCount);
+    const totalChars = Math.max(1, totalLength);
+    const maxRectY = Math.max(0, height - OVERVIEW_RECT_HEIGHT);
+
+    rangesByLane.forEach((ranges, laneIndex) => {
+        const lane = lanes[laneIndex];
+        const color = colors[laneIndex];
+        if (!lane || !color || !ranges.length) return;
+        const display = toDisplayColor(color);
+        const fill = colorToCss(display);
+        ctx.fillStyle = fill;
+        ranges.forEach(range => {
+            const startRatio = range.start / totalChars;
+            const rectY = clamp(startRatio * height, 0, maxRectY);
+            ctx.fillRect(lane.x, rectY, lane.w, OVERVIEW_RECT_HEIGHT);
+        });
+    });
+
+    if (viewportHeight < contentHeight) {
+        const overlayHeight = Math.max(6, (viewportHeight / contentHeight) * height);
+        const overlayY = (container.scrollTop / contentHeight) * height;
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
+        ctx.fillRect(0, overlayY, width, overlayHeight);
+    }
+
+    ctx.restore();
+}
+
+// Sync highlight spans with the current palette selection.
+function updateTextPreview() {
+    if (!els.highlightText) return;
+    const colors = palette.slice(0, getTargetSize());
+    const spans = Array.from(els.highlightText.querySelectorAll("[data-color-index]"));
+    if (colors.length > spans.length) {
+        randomizePreviewText();
+        return;
+    }
+    if (colors.length) {
+        const assignments = new Map();
+        const usedIndices = new Set();
+        let needsRefresh = false;
+        for (const span of spans) {
+            const raw = Number(span.dataset.colorIndex);
+            if (!Number.isFinite(raw) || raw < 0 || raw >= colors.length) {
+                needsRefresh = true;
+                break;
+            }
+            const wordKey = span.dataset.wordKey || normalizeHighlightWord(span.textContent || "");
+            if (assignments.has(wordKey)) {
+                if (assignments.get(wordKey) !== raw) {
+                    needsRefresh = true;
+                    break;
+                }
+            } else {
+                if (usedIndices.has(raw)) {
+                    needsRefresh = true;
+                    break;
+                }
+                assignments.set(wordKey, raw);
+                usedIndices.add(raw);
+            }
+        }
+        if (needsRefresh) {
+            randomizePreviewText();
+            return;
+        }
+        wordColorAssignments = assignments;
+    } else {
+        wordColorAssignments = new Map();
+        unassignedWordColorIndices = [];
+    }
+    spans.forEach(span => {
+        const raw = Number(span.dataset.colorIndex);
+        const color = Number.isFinite(raw) ? colors[raw] : null;
+        if (color) {
+            const display = toDisplayColor(color);
+            const ok = display.to("oklch");
+            span.style.backgroundColor = colorToCss(display);
+            span.style.color = textColorFor_Alt(ok);
+
+            span.classList.remove("inactive");
+            const srgbClone = color.clone();
+            srgbClone.toGamut({ space: "srgb" });
+            span.title = `${indexToLabel(raw)} | ${fmtOKLCH(color)} | ${srgbClone.toString({ format: "hex" })}`;
+        } else {
+            span.style.backgroundColor = "";
+            span.style.color = "";
+            span.style.boxShadow = "";
+            span.classList.add("inactive");
+            span.removeAttribute("title");
+        }
+    });
+    updateOverviewHeader(colors);
+    drawOverview(spans, colors);
+}
+
+// Calculate the mean distance across all palette color pairs.
+function averagePairwiseDistance(cols) {
+    if (cols.length < 2) return 0; let sum = 0, n = 0;
+    for (let i = 0; i < cols.length; i++) for (let j = i + 1; j < cols.length; j++) { sum += oklchDistance(cols[i], cols[j]); n++; }
+    return sum / n;
+}
+
+// Read user-selected lightness and chroma ranges.
+function getRanges() {
+    const Lmin = pctToUnit(parseFloat(els.lMin.value));
+    const Lmax = pctToUnit(parseFloat(els.lMax.value));
+    const Cmin = clamp(parseFloat(els.cMin.value), 0, 0.4);
+    const Cmax = clamp(parseFloat(els.cMax.value), 0, 0.4);
+    return { Lmin: Math.min(Lmin, Lmax), Lmax: Math.max(Lmin, Lmax), Cmin: Math.min(Cmin, Cmax), Cmax: Math.max(Cmin, Cmax) };
+}
+const getExcluded = () => parseColorsMultiLine(els.excludeColors.value || "");
+
+// Build helpers that describe the allowed hue arcs after exclusions.
+function getHueExclusionModel() {
+    const sRaw = parseFloat(els.hueExStart.value), eRaw = parseFloat(els.hueExEnd.value);
+    if (Number.isNaN(sRaw) || Number.isNaN(eRaw) || sRaw === eRaw) {
+        return { arcs: [[0, 360]], total: 360, posToHue: (p) => p, hueToPos: (h) => normHue(h), nextAllowedAfter: (h) => normHue(h) };
+    }
+    const s = normHue(sRaw), e = normHue(eRaw); let arcs;
+    if (s < e) { arcs = []; if (e < 360) arcs.push([e, 360]); if (s > 0) arcs.push([0, s]); }
+    else { arcs = [[e, s]]; }
+    arcs.sort((a, b) => a[0] - b[0]);
+    const total = arcs.reduce((acc, [a, b]) => acc + (b - a), 0);
+    if (total <= 0.0001) return { arcs: [[0, 360]], total: 360, posToHue: (p) => p, hueToPos: (h) => normHue(h), nextAllowedAfter: (h) => normHue(h) };
+    function posToHue(pos) { let p = ((pos % total) + total) % total; for (let i = 0, acc = 0; i < arcs.length; i++) { const [a, b] = arcs[i], len = b - a; if (p < acc + len) return normHue(a + (p - acc)); acc += len; } return normHue(arcs.at(-1)[1] - 1e-9); }
+    function hueToPos(h) {
+        const hue = normHue(h); let acc = 0; for (const [a, b] of arcs) { if (hue >= a && hue < b) return acc + (hue - a); acc += b - a; }
+        for (let d = 0; d < 360; d += 0.1) { const cand = normHue(hue + d); acc = 0; for (const [a, b] of arcs) { if (cand >= a && cand < b) return acc + (cand - a); acc += b - a; } } return 0;
+    }
+    function nextAllowedAfter(h) {
+        const hue = normHue(h); for (const [a, b] of arcs) if (hue >= a && hue < b) return hue;
+        for (let d = 0; d <= 360; d += 0.1) { const cand = normHue(hue + d); for (const [a, b] of arcs) if (cand >= a && cand < b) return cand; } return hue;
+    }
+    return { arcs, total, posToHue, hueToPos, nextAllowedAfter };
+}
+
+// Evenly distribute hues while respecting the exclusion model.
+function generateHuesEvenlyRespectingExclusion(startHue, count, model) {
+    const { total, posToHue, hueToPos } = model;
+    const step = total / count;
+    const startPos = hueToPos(startHue);
+    return Array.from({ length: count }, (_, i) => posToHue(startPos + i * step));
+}
+
+// Find overlaps between two sets of hue arcs.
+function intersectArcs(arcsA, arcsB) {
+    const out = []; for (const [a1, b1] of arcsA) { for (const [a2, b2] of arcsB) { const a = Math.max(a1, a2), b = Math.min(b1, b2); if (a < b) out.push([a, b]); } }
+    return out.sort((x, y) => x[0] - y[0]);
+}
+// Snap a hue to the nearest allowed region.
+function pickClosestHue(prevHue, arcs) {
+    const p = normHue(prevHue); for (const [a, b] of arcs) if (p >= a && p < b) return p;
+    let bestHue = null, bestDist = Infinity; for (const [a, b] of arcs) {
+        const eps = 1e-6, c1 = a, c2 = Math.max(a, b - eps);
+        const d1 = circularDist(p, c1), d2 = circularDist(p, c2); if (d1 < bestDist) { bestDist = d1; bestHue = c1; } if (d2 < bestDist) { bestDist = d2; bestHue = c2; }
+    }
+    return bestHue;
+}
+// Clamp an arbitrary hue into the closest allowed arc.
+function clampHueToArcs(h, arcs) {
+    const p = normHue(h); for (const [a, b] of arcs) if (p >= a && p < b) return p; let bestHue = null, bestDist = Infinity;
+    for (const [a, b] of arcs) {
+        const eps = 1e-6, c1 = a, c2 = Math.max(a, b - eps); const d1 = circularDist(p, c1), d2 = circularDist(p, c2);
+        if (d1 < bestDist) { bestDist = d1; bestHue = c1; } if (d2 < bestDist) { bestDist = d2; bestHue = c2; }
+    } return bestHue;
+}
+// Randomly sample a hue within the allowed arcs.
+function randomHueFromArcs(arcs) {
+    const total = arcs.reduce((acc, [a, b]) => acc + (b - a), 0); if (total <= 0) return null; let r = Math.random() * total;
+    for (const [a, b] of arcs) { const len = b - a; if (r < len) return a + r; r -= len; } return arcs.at(-1)[1] - 1e-6;
+}
+
+/* === FIXED: Build a visible hue gradient using OKLCH→sRGB hex stops === */
+// Refresh the hue slider background so it matches current L/C values.
+function updateHueSliderGradient() {
+    if (!els.hueSlider) return;
+    const L = clamp((parseFloat(els.dirL.value) || 60) / 100, 0, 1);
+    const Craw = parseFloat(els.dirC.value);
+    const C = clamp(Number.isFinite(Craw) ? Math.max(Craw, 0.02) : 0.12, 0, 0.4); // ensure visible hue
+
+    const stops = [];
+    const N = 72; // smoothness (every 5°)
+    for (let i = 0; i <= N; i++) {
+        const h = (i / N) * 360;
+        const col = new Color("oklch", [L, C, h]).toGamut({ space: "srgb" }).toString({ format: "hex" });
+        const pos = ((i / N) * 100).toFixed(2) + "%";
+        stops.push(`oklch(${(L * 100).toFixed(1)}% ${C.toFixed(3)} ${h.toFixed(1)}) ${pos}`);
+    }
+    const gradient = `linear-gradient(90deg, ${stops.join(", ")})`;
+    els.hueSlider.style.setProperty("--hue-gradient", gradient);
+}
+
+// Update the directional gradient preview swatch.
+function updateDirectionalPreview() {
+    const center = normHue(parseFloat(els.hueSlider.value) || 0);
+    const half = clamp(Math.abs(parseFloat(els.hueWindow.value) || 15), 1, 180);
+    const L = clamp((parseFloat(els.dirL.value) || 60) / 100, 0, 1);
+    const C = clamp(Math.max(parseFloat(els.dirC.value) || 0.12, 0.02), 0, 0.4);
+    const start = normHue(center - half), end = normHue(center + half);
+    const col = (h) => new Color("oklch", [L, C, h]).toGamut({ space: "srgb" }).toString({ format: "hex" });
+    if (start <= end) {
+        els.dirPreview.style.background = `linear-gradient(90deg, ${col(start)} 0%, ${col(center)} 50%, ${col(end)} 100%)`;
+    } else {
+        const len1 = 360 - start, len2 = end, total = len1 + len2, split = (len1 / total) * 100;
+        els.dirPreview.style.background = `linear-gradient(90deg, ${col(start)} 0%, ${col(360)} ${split.toFixed(2)}%, ${col(0)} ${split.toFixed(2)}%, ${col(end)} 100%)`;
+    }
+}
+
+// Fill the palette by stepping evenly around the hue wheel starting near the seed color.
+function generateFromInitial() {
+    const N = getTargetSize();
+    const { Lmin, Lmax, Cmin, Cmax } = getRanges();
+    const hueModel = getHueExclusionModel();
+    let init = parseColor(els.initialColor.value);
+    if (!init) init = buildOKLCH((Lmin + Lmax) / 2, (Cmin + Cmax) / 2, Math.random() * 360);
+
+    const h0 = isFinite(init.oklch.h) ? init.oklch.h : Math.random() * 360;
+    const hues = generateHuesEvenlyRespectingExclusion(h0, N, hueModel);
+
+    const excludedColors = getExcluded();
+    const out = [];
+
+    /* GPT generated
+    for(const h of hues){
+      let candidate=null;
+      for(let tries=0;tries<30;tries++){
+        const l=randomIn(Lmin,Lmax), c=randomIn(Cmin,Cmax), col=buildOKLCH(l,c,h);
+        if(!closeToAny(col,excludedColors)){ candidate=col; break; }
+      }
+      candidate ??= buildOKLCH((Lmin+Lmax)/2,(Cmin+Cmax)/2,h); out.push(candidate);
+    }
+    */
+
+    // Added by Edmond
+    let isinit = false;
+    if (!isinit && init) isinit = true;
+    for (const h of hues) {
+        let candidate = null;
+        if (isinit) {
+            candidate = init;
+            isinit = false;
+        }
+        else {
+            for (let tries = 0; tries < 30; tries++) {
+                const l = randomIn(Lmin, Lmax);
+                const c = randomIn(Cmin, Cmax);
+                const col = buildOKLCH(l, c, h);
+                if (!closeToAny(col, excludedColors)) { candidate = col; break; }
+            }
+        }
+
+        candidate ??= buildOKLCH(randomIn(Lmin, Lmax), randomIn(Cmin, Cmax), h);
+
+        out.push(candidate);
+    }
+
+    palette = out;
+    render();
+}
+
+// Build a fresh palette with random hues inside allowed ranges.
+function generateRandom() {
+    const N = getTargetSize();
+    const { Lmin, Lmax, Cmin, Cmax } = getRanges();
+    const hueModel = getHueExclusionModel();
+    const startHue = Math.random() * 360;
+    const hues = generateHuesEvenlyRespectingExclusion(startHue, N, hueModel);
+    const excludedColors = getExcluded(); const out = [];
+    for (const h of hues) {
+        let candidate = null;
+        for (let tries = 0; tries < 30; tries++) {
+            const l = randomIn(Lmin, Lmax), c = randomIn(Cmin, Cmax), col = buildOKLCH(l, c, h);
+            if (!closeToAny(col, excludedColors)) {
+                candidate = col;
+                break;
+            }
+        }
+        candidate ??= buildOKLCH(randomIn(Lmin, Lmax), randomIn(Cmin, Cmax), h);
+        out.push(candidate);
+    }
+    palette = out; render();
+}
+
+// Append the next color by marching around the hue wheel.
+function addNextStepwise() {
+    const N = getTargetSize(); if (palette.length >= N) return;
+    const { Lmin, Lmax, Cmin, Cmax } = getRanges(); const hueModel = getHueExclusionModel();
+    const minD = parseFloat(els.minDistance.value) || 0.08; const excluded = getExcluded();
+    let prev = palette[palette.length - 1] || parseColor(els.initialColor.value);
+    if (!prev) prev = buildOKLCH((Lmin + Lmax) / 2, (Cmin + Cmax) / 2, Math.random() * 360);
+    const prevHueAllowed = hueModel.nextAllowedAfter(prev.oklch.h ?? Math.random() * 360), stepPos = hueModel.total / N;
+    const targetPos = hueModel.hueToPos(prevHueAllowed) + stepPos, targetHue = hueModel.posToHue(targetPos);
+    let candidate = null;
+    for (let ring = 0; ring < 12 && !candidate; ring++) {
+        const offset = ring * (stepPos / 6);
+        for (const sign of [1, -1]) {
+            const hTry = hueModel.posToHue(targetPos + sign * offset);
+            for (let tries = 0; tries < 60; tries++) {
+                const l = randomIn(Lmin, Lmax), c = randomIn(Cmin, Cmax), col = buildOKLCH(l, c, hTry);
+                if (oklchDistance(col, prev) >= minD && !closeToAny(col, excluded)) { candidate = col; break; }
+            }
+            if (candidate) break;
+        }
+    }
+    if (!candidate) {
+        for (let tries = 0; tries < 500; tries++) {
+            const hRand = hueModel.nextAllowedAfter(Math.random() * 360);
+            const col = buildOKLCH(randomIn(Lmin, Lmax), randomIn(Cmin, Cmax), hRand);
+            if (oklchDistance(col, prev) >= minD && !closeToAny(col, excluded)) { candidate = col; break; }
+        }
+    }
+    candidate ??= buildOKLCH((Lmin + Lmax) / 2, (Cmin + Cmax) / 2, targetHue);
+    palette.push(candidate); render();
+}
+
+// Add a color constrained to the directional preview window.
+function addNextDirectional() {
+    const N = getTargetSize();
+    if (palette.length >= N) return;
+
+    const center = normHue(parseFloat(els.hueSlider.value) || 0);
+    const half = clamp(Math.abs(parseFloat(els.hueWindow.value) || 15), 1, 180);
+    const Lsel = clamp((parseFloat(els.dirL.value) || 60) / 100, 0, 1);
+    const Csel = clamp(Math.max(parseFloat(els.dirC.value) || 0.12, 0.02), 0, 0.4);
+    const sectorArcs = (() => { const a = normHue(center - half), b = normHue(center + half); return (a < b) ? [[a, b]] : [[0, b], [a, 360]]; })();
+    const hueModel = getHueExclusionModel();
+    const allowed = intersectArcs(hueModel.arcs, sectorArcs);
+    if (!allowed.length) { console.warn("Directional sector fully excluded."); return; }
+    const minD = parseFloat(els.minDistance.value) || 0.08;
+    const excluded = getExcluded();
+    let prev = palette[palette.length - 1] || parseColor(els.initialColor.value);
+    if (!prev) prev = buildOKLCH(Lsel, Csel, center);
+    const baseHue = pickClosestHue(prev.oklch.h ?? center, allowed);
+    let candidate = null;
+    for (let ring = 0; ring < 24 && !candidate; ring++) {
+        const offset = ring * 2;
+        for (const sign of [1, -1]) {
+            const hTry = clampHueToArcs(baseHue + sign * offset, allowed);
+            const col = buildOKLCH(Lsel, Csel, hTry);
+            if (oklchDistance(col, prev) >= minD && !closeToAny(col, excluded)) { candidate = col; break; }
+        }
+    }
+    if (!candidate) {
+        for (let tries = 0; tries < 400; tries++) {
+            const hRand = randomHueFromArcs(allowed); const col = buildOKLCH(Lsel, Csel, hRand);
+            if (oklchDistance(col, prev) >= minD && !closeToAny(col, excluded)) { candidate = col; break; }
+        }
+    }
+    candidate ??= buildOKLCH(Lsel, Csel, baseHue);
+    palette.push(candidate);
+    render();
+}
+
+
+// Replace the palette with the user-provided list of colors.
+function applyInputToPalette() { const N = getTargetSize(); const cols = parseColorsMultiLine(els.inputColors.value || ""); palette = cols.slice(0, N); render(); }
+// Clear out the current palette.
+function clearPalette() { palette = []; render(); }
+
+// Clipboard helpers for exporting palettes in different formats.
+function copyText(t) { if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(t).catch(() => legacyCopy(t)); } else legacyCopy(t); }
+function legacyCopy(t) { const ta = document.createElement("textarea"); ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch { } document.body.removeChild(ta); }
+const copyOKLCH = () => copyText(palette.map(fmtOKLCH).join("\n"));
+const copyHex = () => copyText(palette.map(c => c.toGamut({ space: "srgb" }).toString({ format: "hex" })).join("\n"));
+function copyJSON() { const arr = palette.map(c => ({ oklch: { l: +((c.oklch.l * 100).toFixed(2)), c: +c.oklch.c.toFixed(4), h: +(isFinite(c.oklch.h) ? c.oklch.h : 0).toFixed(1) }, hex: c.toGamut({ space: "srgb" }).toString({ format: "hex" }) })); copyText(JSON.stringify(arr, null, 2)); }
+
+// Re-render swatches when the sRGB gamut checkbox changes.
+function applySRGBGamut() {
+    render();
+}
+
+// Swap between grid and column layouts for swatches.
+function updateLayoutMode() {
+    if (!els.layoutMode) return;
+    const isSingleColumn = els.layoutMode.value === "column";
+    els.grid.classList.toggle("single-column", isSingleColumn);
+}
+
+
+els.btnApplyInput.addEventListener("click", applyInputToPalette);
+els.btnClear.addEventListener("click", clearPalette);
+els.btnGenFromInitial.addEventListener("click", generateFromInitial);
+els.btnGenRandom.addEventListener("click", generateRandom);
+els.btnAddNext.addEventListener("click", addNextStepwise);
+els.btnAddNextDirectional.addEventListener("click", addNextDirectional);
+els.btnCopyOKLCH.addEventListener("click", copyOKLCH);
+els.btnCopyHex.addEventListener("click", copyHex);
+els.btnCopyJSON.addEventListener("click", copyJSON);
+if (els.btnRandomizeText) {
+    els.btnRandomizeText.addEventListener("click", () => {
+        randomizePreviewText();
+    });
+}
+if (els.previewFont) {
+    els.previewFont.addEventListener("change", (event) => {
+        const key = event.target.value;
+        const normalized = key in PREVIEW_FONTS ? key : DEFAULT_PREVIEW_SETTINGS.font;
+        updatePreviewSetting("font", normalized);
+    });
+}
+if (els.previewFontSize) {
+    els.previewFontSize.addEventListener("input", (event) => {
+        const raw = Number(event.target.value);
+        if (!Number.isFinite(raw) || raw < PREVIEW_FONT_SIZE_RANGE.min) {
+            return;
+        }
+        const normalized = clamp(raw, PREVIEW_FONT_SIZE_RANGE.min, PREVIEW_FONT_SIZE_RANGE.max);
+        updatePreviewSetting("fontSize", normalized);
+    });
+    els.previewFontSize.addEventListener("change", (event) => {
+        const raw = Number(event.target.value);
+        const normalized = clamp(
+            Number.isFinite(raw) ? raw : DEFAULT_PREVIEW_SETTINGS.fontSize,
+            PREVIEW_FONT_SIZE_RANGE.min,
+            PREVIEW_FONT_SIZE_RANGE.max,
+        );
+        event.target.value = String(normalized);
+        updatePreviewSetting("fontSize", normalized);
+    });
+}
+if (els.previewLineHeight) {
+    const sanitizeLineHeight = (value) => {
+        const normalized = clamp(
+            Number.isFinite(value) ? value : DEFAULT_PREVIEW_SETTINGS.lineHeight,
+            PREVIEW_LINE_HEIGHT_RANGE.min,
+            PREVIEW_LINE_HEIGHT_RANGE.max,
+        );
+        return Math.round(normalized * 100) / 100;
+    };
+    els.previewLineHeight.addEventListener("input", (event) => {
+        const raw = Number(event.target.value);
+        if (!Number.isFinite(raw)) {
+            return;
+        }
+        updatePreviewSetting("lineHeight", sanitizeLineHeight(raw));
+    });
+    els.previewLineHeight.addEventListener("change", (event) => {
+        const raw = Number(event.target.value);
+        const sanitized = sanitizeLineHeight(raw);
+        event.target.value = String(sanitized);
+        updatePreviewSetting("lineHeight", sanitized);
+    });
+}
+if (els.previewBackground) {
+    const applyBackgroundValue = (raw) => {
+        if (typeof raw !== "string") return;
+        const trimmed = raw.trim();
+        if (!/^#[0-9a-f]{6}$/i.test(trimmed)) return;
+        updatePreviewSetting("background", trimmed.toLowerCase());
+    };
+    els.previewBackground.addEventListener("input", (event) => applyBackgroundValue(event.target.value));
+    els.previewBackground.addEventListener("change", (event) => applyBackgroundValue(event.target.value));
+}
+els.sRGBGamut.addEventListener("click", applySRGBGamut);
+if (els.layoutMode) {
+    els.layoutMode.addEventListener("change", updateLayoutMode);
+}
+
+els.targetSize.addEventListener("input", () => { els.targetSpan.textContent = String(getTargetSize()); if (palette.length > getTargetSize()) palette = palette.slice(0, getTargetSize()); render(); });
+
+["hueSlider", "hueWindow", "dirL", "dirC", "hueExStart", "hueExEnd"].forEach(id => {
+    document.getElementById(id).addEventListener("input", () => {
+        els.dirLReadout.textContent = `${els.dirL.value}%`;
+        els.dirCReadout.textContent = `${parseFloat(els.dirC.value).toFixed(3)}`;
+        updateHueSliderGradient();
+        updateDirectionalPreview();
+    });
+});
+
+["lMin", "lMax", "cMin", "cMax"].forEach(id => {
+    document.getElementById(id).addEventListener("input", () => {
+        updateHueSliderGradient();
+        updateDirectionalPreview();
+    });
+});
+
+if (els.highlightText) {
+    let scrolling = false;
+    els.highlightText.addEventListener("scroll", () => {
+        if (scrolling) return;
+        scrolling = true;
+        requestAnimationFrame(() => {
+            scrolling = false;
+            const spans = Array.from(els.highlightText.querySelectorAll("[data-color-index]"));
+            drawOverview(spans, palette.slice(0, getTargetSize()));
+        });
+    });
+}
+
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        updateTextPreview();
+    }, 120);
+});
+
+// Main render loop for rebuilding swatches and dependent UI.
+function render() {
+    updateLayoutMode();
+    const N = getTargetSize(); els.targetSpan.textContent = String(N);
+    els.grid.innerHTML = "";
+    if (palette.length == 0) {
+        let init = parseColor(els.initialColor.value);
+        if (init) palette.push(init);
+    }
+    palette.forEach((col, i) => {
+        const swatchEl = createSwatchElement(col, i);
+        els.grid.appendChild(swatchEl);
+    });
+    if (pendingReorderFocus) {
+        const { index, direction } = pendingReorderFocus;
+        const swatch = els.grid.querySelector(`.swatch[data-index="${index}"]`);
+        if (swatch) {
+            let target = swatch.querySelector(`button[data-reorder="${direction}"]`);
+            if (target && target.disabled) {
+                const fallbackDir = direction === "up" ? "down" : "up";
+                const fallback = swatch.querySelector(`button[data-reorder="${fallbackDir}"]`);
+                if (fallback && !fallback.disabled) {
+                    target = fallback;
+                }
+            }
+            if (target && !target.disabled) {
+                target.focus();
+            }
+        }
+        pendingReorderFocus = null;
+    }
+    updatePaletteOutputs();
+}
+
+// Init
+els.dirLReadout.textContent = `${els.dirL.value}%`;
+els.dirCReadout.textContent = `${parseFloat(els.dirC.value).toFixed(3)}`;
+updateHueSliderGradient();
+
+updateDirectionalPreview();
+activateTab("basic");
+
+randomizePreviewText();
+render();
