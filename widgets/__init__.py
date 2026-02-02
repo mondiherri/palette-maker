@@ -6,6 +6,7 @@ from .preview_settings import PreviewSettingsWidget
 from .palette_grid import PaletteGridWidget
 from .text_preview import TextPreviewWidget
 from .overview_panel import OverviewPanelWidget
+from .color_swatch import ColorSwatchWidget, ColorSwatchPanel
 
 __all__ = [
     "load_assets",
@@ -16,4 +17,6 @@ __all__ = [
     "PaletteGridWidget",
     "TextPreviewWidget",
     "OverviewPanelWidget",
+    "ColorSwatchWidget",
+    "ColorSwatchPanel",
 ]
